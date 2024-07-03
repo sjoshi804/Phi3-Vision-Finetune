@@ -4,6 +4,7 @@ This repository contains a script for training the [Phi3-Vision model](https://h
 
 ## Update
 
+- [2024/07/03] Added WebUI demo.
 - [2024/06/27] 🔥Supports multi-image training and inference.
 - [2024/06/27] Supports saving the model into safetensor.
 
@@ -20,6 +21,7 @@ This repository contains a script for training the [Phi3-Vision model](https://h
     - [Merge LoRA Weights](#merge-lora-weights)
 - [Inference](#inference)
   - [CLI Inference](#cli-inference)
+  - [WebUI Demo](#gradio-infernce-webui)
 
 ## Supported Features
 
@@ -189,6 +191,8 @@ You could see this [issue](https://github.com/andimarafioti/florence2-finetuning
 
 ## Inference
 
+**Note:** You should use the merged weight when trained with LoRA.
+
 ### CLI Inference
 
 ```
@@ -199,18 +203,34 @@ python -m src.serve.cli \
 
 You can set some other generation configs like `repetition_penalty`, `temperature` etc.
 
+### Gradio Infernce (WebUI)
+
+1. Install gradio
+
+```
+pip install gradio
+```
+
+2. Launch app
+
+```
+python -m src.serve.app \
+    --model-path /path/to/merged/weight
+```
+
+You can launch gradio based demo with this command. This can also set some other generation configs like `repetition_penalty`, `temperature` etc.
+
 ## TODO
 
 - [x] Saving in safetensor
 - [x] Supporting multi-image training and inference.
+- [x] Demo with WebUI
 - [ ] Converting into gguf format.
-- [ ] Demo with WebUI
-- [ ] Setting different learning rate for `img_projector` and `vision_model`
 
 ## Known Issues
 
 - [libcudnn issue](#issue-for-libcudnn-error)
-- Does not support text-only dataset.
+- Does not support text-only data.
 
 ## License
 
