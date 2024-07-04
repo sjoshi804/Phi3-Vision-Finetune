@@ -171,14 +171,10 @@ bash scripts/finetune_lora.sh
 #### Merge LoRA Weights
 
 ```
-python src/merge_lora_weights.py \
-    --model-path /Your/path/to/saved/weights \
-    --model-base microsoft/Phi-3-vision-128k-instruct \
-    --save-model-path /Your/path/to/save \
-    --safe-serialization
+bash scripts/merge_lora.sh
 ```
 
-**Note:** Remember to replace the paths in `finetune.sh` or `finetune_lora.sh` with your specific paths.
+**Note:** Remember to replace the paths in `finetune.sh` or `finetune_lora.sh` with your specific paths. (Also in `merge_lora.sh` when using LoRA.)
 
 #### Issue for libcudnn error
 

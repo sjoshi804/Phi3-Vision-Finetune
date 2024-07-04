@@ -24,7 +24,7 @@ if __name__ == "__main__":
     parser.add_argument("--model-path", type=str, required=True)
     parser.add_argument("--model-base", type=str, required=True)
     parser.add_argument("--save-model-path", type=str, required=True)
-    parser.add_argumnet("--safe-serialization", action='store_true')
+    parser.add_argument("--safe-serialization", action='store_true')
 
     args = parser.parse_args()
 

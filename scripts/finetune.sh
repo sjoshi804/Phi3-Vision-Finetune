@@ -1,5 +1,7 @@
 #!/bin/bash
 
+export PYTHONPATH=src:$PYTHONPATH
+
 deepspeed src/training/train.py \
     --deepspeed scripts/zero3.json \
     --model_id microsoft/Phi-3-vision-128k-instruct \
