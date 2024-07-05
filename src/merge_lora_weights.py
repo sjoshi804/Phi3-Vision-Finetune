@@ -9,7 +9,7 @@ def merge_lora(args):
         from accelerate import Accelerator
         accel = Accelerator()
         # You could set the shard size whatever you want
-        accel.save(model, args.save_model_path, max_shard_size = '5GB')
+        accel.save_model(model, args.save_model_path, max_shard_size = '5GB')
         model.config.save_pretrained(args.save_model_path)
         processor.save_pretrained(args.save_model_path)
 
