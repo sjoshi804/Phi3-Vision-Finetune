@@ -29,7 +29,7 @@ This repository contains a script for training the [Phi3-Vision model](https://h
 - LoRA, QLoRA
 - Flexible selection of LoRA target modules
 - Full-finetuning
-- Finetuning `img_projector` and `vision_tower`
+- Enable finetuning `img_projector` and `vision_tower` while using LoRA.
 - Disable/enable Flash Attention 2
 - Multi-image training and inference
 
@@ -221,7 +221,7 @@ You can launch gradio based demo with this command. This can also set some other
 - [x] Saving in safetensor
 - [x] Supporting multi-image training and inference.
 - [x] Demo with WebUI
-- [ ] Converting into gguf format.
+- [ ] Mixture of Experts training support.
 
 ## Known Issues
 
