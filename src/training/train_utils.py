@@ -17,7 +17,6 @@ def maybe_zero_3(param, ignore_status=False, name=None):
         param = param.detach().cpu().clone()
     return param
 
-
 # Borrowed from peft.utils.get_peft_model_state_dict
 def get_peft_state_maybe_zero_3(named_params, bias):
     if bias == "none":
@@ -50,33 +49,3 @@ def get_peft_state_non_lora_maybe_zero_3(named_params, require_grad_only=True):
         to_return = {k: t for k, t in to_return.items() if t.requires_grad}
     to_return = {k: maybe_zero_3(v, ignore_status=True).cpu() for k, v in to_return.items()}
     return to_return
-
-
-def safe_save_model_for_hf_trainer(trainer: transformers.Trainer,
-                                   output_dir: str):
-    """Collects the state dict and dump to disk."""
-
-    # Due to the limited GPU resources, I have not been able to fully debug for full fine-tuning.
-    # If any issues arise, please reprot them in the issues section of the repository.
-    # I will try to fix them as soon as possible.
-
-    # if trainer.deepspeed:
-    #     from accelerate import Accelerator
-    #     accelerator = Accelerator()
-    #     accelerator.wait_for_everyone()
-    #     torch.cuda.synchronize()
-    #     # trainer.save_model(output_dir)
-    #     accelerator.save(trainer.model, output_dir, max_shard_size = '5GB')
-    #     trainer.model.config.save_pretrained(output_dir)
-    #     trainer.processor.save_pretrained(output_dir)
-    #     return
-
-    state_dict = trainer.model.state_dict()
-    if trainer.args.should_save:
-        cpu_state_dict = {
-            key: value.cpu()
-            for key, value in state_dict.items()
-        }
-        del state_dict
-        trainer._save(output_dir, state_dict=cpu_state_dict)  # noqa
-        trainer.model.config.save_pretrained(output_dir)

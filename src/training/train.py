@@ -219,7 +219,10 @@ def train():
             model.save_pretrained(training_args.output_dir, state_dict=state_dict)
             torch.save(non_lora_state_dict, os.path.join(training_args.output_dir, "non_lora_state_dict.bin"))
     else:
-        safe_save_model_for_hf_trainer(trainer, output_dir=training_args.output_dir)
+        state_dict = get_peft_state_non_lora_maybe_zero_3(model.named_parameters(), require_grad_only=False)
+        model.config.save_pretrained(training_args.output_dir)
+        processor.save_pretrained(training_args.output_dir)
+        trainer._save(output_dir=training_args.output_dir, state_dict=state_dict)
 
 
 if __name__ == "__main__":

@@ -14,7 +14,7 @@ deepspeed src/training/train.py \
     --data_path /path/to/your/training/data.json \
     --image_folder /path/to/your/image/folder \
     --tune_img_projector True \
-    --freeze_vision_tower True \
+    --freeze_vision_tower False \
     --bf16 True \
     --output_dir output/testing \
     --num_train_epochs 1 \

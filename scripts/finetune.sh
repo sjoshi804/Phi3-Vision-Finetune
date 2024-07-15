@@ -21,6 +21,6 @@ deepspeed src/training/train.py \
     --logging_steps 1 \
     --tf32 True \
     --gradient_checkpointing True \
-    --report_to wandb \
+    --report_to none \
     --lazy_preprocess True \
     --dataloader_num_workers 4
