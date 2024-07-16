@@ -15,6 +15,8 @@ deepspeed src/training/train.py \
     --per_device_train_batch_size 4 \
     --gradient_accumulation_steps 4 \
     --learning_rate 2e-5 \
+    --projector_lr 2e-5 \
+    --vision_lr 2e-6 \
     --weight_decay 0. \
     --warmup_ratio 0.03 \
     --lr_scheduler_type "cosine" \

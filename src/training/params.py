@@ -48,7 +48,8 @@ class TrainingArguments(TrainingArguments):
     lora_dropout: float = 0.05
     lora_weight_path: str = ""
     lora_bias: str = "none"
-    multimodal_lr: Optional[float] = None
+    projector_lr: Optional[float] = None
+    vision_lr: Optional[float] = None
     lora_namespan_exclude: str = field(default=None, metadata={"help": "List of namespan to exclude for LoRA"})
     num_lora_modules: int = -1
 

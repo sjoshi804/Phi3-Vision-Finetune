@@ -4,6 +4,7 @@ This repository contains a script for training the [Phi3-Vision model](https://h
 
 ## Update
 
+- [2024/07/16] Feature update for setting different lr in projector and vision_model.
 - [2024/07/03] Added WebUI demo.
 - [2024/06/27] 🔥Supports multi-image training and inference.
 - [2024/06/27] Supports saving the model into safetensor.
@@ -146,10 +147,11 @@ bash scripts/finetune_lora.sh
 - `--num_train_epochs` (int): Number of training epochs (default: 1).
 - `--per_device_train_batch_size` (int): Training batch size per GPU per forwarding step.
 - `--gradient_accumulation_steps` (int): Gradient accumulation steps (default: 4).
-- `--freeze_vision_tower` (bool): Option to freeze vision_model (default: False)
-- `--tune_img_projector` (bool): Option to finetune img_projector (default: True)
+- `--freeze_vision_tower` (bool): Option to freeze vision_model (default: False).
+- `--tune_img_projector` (bool): Option to finetune img_projector (default: True).
 - `--num_lora_modules` (int): Number of target modules to add LoRA (-1 means all layers).
-- `--multimodal_lr` (float): Learning rate for multimodal modules (`vision_tower` and `img_projection`)
+- `--vision_lr` (float): Learning rate for `vision_tower` and spatial merging layer.
+- `--projector_lr` (float): Learning rate for `img_projection`.
 - `--learning_rate` (float): Learning rate for language module.
 - `--bf16` (bool): Option for using bfloat16.
 - `--lora_namespan_exclude` (str): Exclude modules with namespans to add LoRA.
@@ -165,6 +167,7 @@ bash scripts/finetune_lora.sh
 - `--dataloader_num_workers` (int): Number of data loader workers (default: 4).
 
 **Note:** The learning rate of `vision_model` should be 10x ~ 5x smaller than the `language_model`.
+**IMPORTANT** If you want to set different lr for besides language model, You should set `vision_lr` and `projector_lr` together. It won't work if either one is missing.
 
 </details>
 

@@ -34,34 +34,58 @@ class Phi3VTrainer(Trainer):
         if self.optimizer is None:
             decay_parameters = get_parameter_names(opt_model, ALL_LAYERNORM_LAYERS)
             decay_parameters = [name for name in decay_parameters if "bias" not in name]
-            if self.args.multimodal_lr is not None:
-                multimodal_parameters = [name for name, _ in opt_model.named_parameters() if "img_projection" in name or "vision_model" in name]
+            if self.args.vision_lr is not None and self.args.projector_lr is not None:
+                # glb_GN and sub_GN are the parameters for merging the output of channel dimension in image_embedding.
+                vision_parameters = [
+                    name for name, _ in opt_model.named_parameters() 
+                    if "vision_model" in name 
+                ]
+                
+                img_projection_parameters = [
+                    name for name, _ in opt_model.named_parameters() 
+                    if "img_projection" in name or "glb_GN" in name or "sub_GN" in name
+                ]
+
                 optimizer_grouped_parameters = [
                     {
                         "params": [
-                            p for n, p in opt_model.named_parameters() if (n in decay_parameters and n not in multimodal_parameters and p.requires_grad)
+                            p for n, p in opt_model.named_parameters() if (n in decay_parameters and n not in vision_parameters and n not in img_projection_parameters and p.requires_grad)
                         ],
                         "weight_decay": self.args.weight_decay,
                     },
                     {
                         "params": [
-                            p for n, p in opt_model.named_parameters() if (n not in decay_parameters and n not in multimodal_parameters and p.requires_grad)
+                            p for n, p in opt_model.named_parameters() if (n not in decay_parameters and n not in vision_parameters and n not in img_projection_parameters and p.requires_grad)
                         ],
                         "weight_decay": 0.0,
                     },
                     {
                         "params": [
-                            p for n, p in opt_model.named_parameters() if (n in decay_parameters and n in multimodal_parameters and p.requires_grad)
+                            p for n, p in opt_model.named_parameters() if (n in decay_parameters and n in vision_parameters and p.requires_grad)
                         ],
                         "weight_decay": self.args.weight_decay,
-                        "lr": self.args.multimodal_lr,
+                        "lr": self.args.vision_lr,
                     },
                     {
                         "params": [
-                            p for n, p in opt_model.named_parameters() if (n not in decay_parameters and n in multimodal_parameters and p.requires_grad)
+                            p for n, p in opt_model.named_parameters() if (n not in decay_parameters and n in vision_parameters and p.requires_grad)
                         ],
                         "weight_decay": 0.0,
-                        "lr": self.args.multimodal_lr,
+                        "lr": self.args.vision_lr,
+                    },
+                    {
+                        "params": [
+                            p for n, p in opt_model.named_parameters() if (n in decay_parameters and n in img_projection_parameters and p.requires_grad)
+                        ],
+                        "weight_decay": self.args.weight_decay,
+                        "lr": self.args.projector_lr,
+                    },
+                    {
+                        "params": [
+                            p for n, p in opt_model.named_parameters() if (n not in decay_parameters and n in img_projection_parameters and p.requires_grad)
+                        ],
+                        "weight_decay": 0.0,
+                        "lr": self.args.projector_lr,
                     },
                 ]
             else:

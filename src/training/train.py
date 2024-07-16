@@ -174,7 +174,8 @@ def train():
         if training_args.bits in [4, 8]:
             model.model.vision_embed_tokens.img_processor.to(dtype=compute_dtype, device=training_args.device)
 
-    model.config.multimodal_lr = training_args.multimodal_lr
+    model.config.vision_lr = training_args.vision_lr
+    model.config.projector_lr = training_args.projector_lr
 
     if training_args.bits in [4, 8]:
         from peft.tuners.lora import LoraLayer
