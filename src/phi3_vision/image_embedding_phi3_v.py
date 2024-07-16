@@ -15,11 +15,16 @@
 
 import math
 import torch
-import torch.nn as nn
-from transformers import CLIPVisionModel, PretrainedConfig
-from transformers import CLIPVisionConfig 
+from torch import nn
+from transformers import CLIPVisionModel, PretrainedConfig, CLIPVisionConfig
+from transformers.models.clip.modeling_clip import CLIPAttention
 from transformers.utils import logging
 from datetime import datetime 
+
+try:
+    from flash_attn import flash_attn_func
+except ImportError:
+    pass
 
 logger = logging.get_logger(__name__)
 
@@ -39,6 +44,39 @@ CLIP_VIT_LARGE_PATCH14_336_CONFIG = CLIPVisionConfig(
   patch_size=14,
   projection_dim=768 
 )
+
+class CLIPAttentionFA2(CLIPAttention):
+    """Add flash attention 2 to CLIPAttention. (This is only used in the vision encoder)"""
+
+    def forward(self,
+        hidden_states,
+        attention_mask=None,
+        causal_attention_mask=None,
+        output_attentions=False,
+    ):
+        """Input shape: Batch x Time x Channel"""
+
+        assert attention_mask is None, "CLIPAttentionFA2 does not support attention_mask"
+        assert causal_attention_mask is None, "CLIPAttentionFA2 does not support causal_attention_mask"
+        assert output_attentions is False, "CLIPAttentionFA2 does not support output_attentions"
+
+        bsz, tgt_len, embed_dim = hidden_states.size()
+        query_states = self.q_proj(hidden_states).reshape(bsz, tgt_len, self.num_heads, self.head_dim)
+        key_states = self.k_proj(hidden_states).reshape(bsz, tgt_len, self.num_heads, self.head_dim)
+        value_states = self.v_proj(hidden_states).reshape(bsz, tgt_len, self.num_heads, self.head_dim)
+
+        attn_output = flash_attn_func(
+            query_states,
+            key_states,
+            value_states,
+            dropout_p=self.dropout if self.training else 0.0,
+            softmax_scale=self.scale,
+            causal=False,
+        ).reshape(bsz, tgt_len, embed_dim)
+
+        attn_output = self.out_proj(attn_output)
+        return attn_output, None
+
 
 class Phi3ImageEmbedding(nn.Module):
     """Phi3 Image embedding."""
@@ -65,6 +103,13 @@ class Phi3ImageEmbedding(nn.Module):
             self.img_processor = CLIPVisionModel(clip_config)
             image_dim_out = config.img_processor['image_dim_out']
             self.num_img_tokens = config.img_processor['num_img_tokens']
+
+            if config._attn_implementation == 'flash_attention_2':
+                for layer in self.img_processor.vision_model.encoder.layers:
+                    clip_fa2 = CLIPAttentionFA2(clip_config)
+                    del layer.self_attn
+                    layer.self_attn = clip_fa2
+
         else:
             raise NotImplementedError(f'img_processor = {config.img_processor}, not implemented')
 
