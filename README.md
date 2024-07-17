@@ -4,6 +4,7 @@ This repository contains a script for training the [Phi3-Vision model](https://h
 
 ## Update
 
+- [2024/07/16] Adding flash-attn to vision_model following the official implementation from phi3-vision repo.
 - [2024/07/16] Feature update for setting different lr in projector and vision_model.
 - [2024/07/03] Added WebUI demo.
 - [2024/06/27] 🔥Supports multi-image training and inference.
