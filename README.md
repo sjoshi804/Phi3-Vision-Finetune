@@ -172,6 +172,8 @@ bash scripts/finetune_lora.sh
 
 </details>
 
+If you run out of vram, you can use [zero3_offload](./scripts/zero3_offload.json) instead of [zero3](./scripts/zero3_offload.json). However, using zero3 is preferred.
+
 #### Merge LoRA Weights
 
 ```
