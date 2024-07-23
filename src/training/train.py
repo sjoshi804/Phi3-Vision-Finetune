@@ -19,7 +19,7 @@ def rank0_print(*args):
     if local_rank == 0 or local_rank == '0' or local_rank is None:
         print(*args)
 
-def find_target_linear_names(model, num_lora_modules=-1, lora_namespan_exclude=["self_attn", "lm_head"], verbose=True):
+def find_target_linear_names(model, num_lora_modules=-1, lora_namespan_exclude=[], verbose=True):
     linear_cls = torch.nn.modules.Linear
     lora_module_names = []
     lora_namespan_exclude += ["vision_model", "img_projection"]
@@ -43,8 +43,10 @@ def train():
     
     model_args, data_args, training_args = parser.parse_args_into_dataclasses()
 
-    if training_args.lora_enable:
+    if training_args.lora_enable and training_args.lora_namespan_exclude is not None:
         training_args.lora_namespan_exclude = ast.literal_eval(training_args.lora_namespan_exclude)
+    else:
+        training_args.lora_namespan_exclude = []
 
     local_rank = training_args.local_rank
     compute_dtype = (torch.float16 if training_args.fp16 else (torch.bfloat16 if training_args.bf16 else torch.float32))
@@ -220,10 +222,8 @@ def train():
             model.save_pretrained(training_args.output_dir, state_dict=state_dict)
             torch.save(non_lora_state_dict, os.path.join(training_args.output_dir, "non_lora_state_dict.bin"))
     else:
-        state_dict = get_peft_state_non_lora_maybe_zero_3(model.named_parameters(), require_grad_only=False)
-        model.config.save_pretrained(training_args.output_dir)
-        processor.save_pretrained(training_args.output_dir)
-        trainer._save(output_dir=training_args.output_dir, state_dict=state_dict)
+        safe_save_model_for_hf_trainer(trainer, output_dir=training_args.output_dir)
+
 
 
 if __name__ == "__main__":

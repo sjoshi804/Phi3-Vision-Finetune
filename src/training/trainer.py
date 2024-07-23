@@ -7,10 +7,18 @@ from transformers.trainer import (
     is_sagemaker_mp_enabled,
     get_parameter_names,
     ALL_LAYERNORM_LAYERS,
+    is_peft_available,
+    WEIGHTS_NAME,
+    TRAINING_ARGS_NAME,
+    SAFE_WEIGHTS_NAME,
     logger,
 )
+import safetensors
+from peft import PeftModel
 from typing import Optional
 from transformers.processing_utils import ProcessorMixin
+from transformers.modeling_utils import PreTrainedModel
+from peft import PeftModel
 
 class Phi3VTrainer(Trainer):
 
@@ -35,12 +43,13 @@ class Phi3VTrainer(Trainer):
             decay_parameters = get_parameter_names(opt_model, ALL_LAYERNORM_LAYERS)
             decay_parameters = [name for name in decay_parameters if "bias" not in name]
             if self.args.vision_lr is not None and self.args.projector_lr is not None:
-                # glb_GN and sub_GN are the parameters for merging the output of channel dimension in image_embedding.
+                
                 vision_parameters = [
                     name for name, _ in opt_model.named_parameters() 
                     if "vision_model" in name 
                 ]
                 
+                # glb_GN and sub_GN are the parameters for merging the output of channel dimension
                 img_projection_parameters = [
                     name for name, _ in opt_model.named_parameters() 
                     if "img_projection" in name or "glb_GN" in name or "sub_GN" in name
@@ -128,9 +137,44 @@ class Phi3VTrainer(Trainer):
         super(Phi3VTrainer, self)._save_checkpoint(model, trial, metrics)
 
     def _save(self, output_dir: Optional[str] = None, state_dict=None):
-            super(Phi3VTrainer, self)._save(output_dir, state_dict)
+            # If we are executing this function, we are the process zero, so we don't check for that.
+            output_dir = output_dir if output_dir is not None else self.args.output_dir
+            os.makedirs(output_dir, exist_ok=True)
+            logger.info(f"Saving model checkpoint to {output_dir}")
+
+            supported_classes = (PreTrainedModel,) if not is_peft_available() else (PreTrainedModel, PeftModel)
+            # Save a trained model and configuration using `save_pretrained()`.
+            # They can then be reloaded using `from_pretrained()`
+            if not isinstance(self.model, supported_classes):
+                if state_dict is None:
+                    state_dict = self.model.state_dict()
+
+                if isinstance(self.accelerator.unwrap_model(self.model), supported_classes):
+                    self.accelerator.unwrap_model(self.model).save_pretrained(
+                        output_dir, state_dict=state_dict, safe_serialization=self.args.save_safetensors
+                    )
+                else:
+                    logger.info("Trainer.model is not a `PreTrainedModel`, only saving its state dict.")
+                    if self.args.save_safetensors:
+                        safetensors.torch.save_file(
+                            state_dict, os.path.join(output_dir, SAFE_WEIGHTS_NAME), metadata={"format": "pt"}
+                        )
+                    else:
+                        torch.save(state_dict, os.path.join(output_dir, WEIGHTS_NAME))
+            else:
+                state_dict = {k:v for k, v in state_dict.items() if "wte" not in k}
+                self.model.save_pretrained(
+                    output_dir, state_dict=state_dict, safe_serialization=self.args.save_safetensors
+                )
+
+            if self.tokenizer is not None:
+                self.tokenizer.save_pretrained(output_dir)
+
             if self.processor is not None:
                 self.processor.save_pretrained(output_dir)
+
+            # Good practice: save your training arguments together with the trained model
+            torch.save(self.args, os.path.join(output_dir, TRAINING_ARGS_NAME))
 
     # def training_step(self, model, inputs):
     #     for name, param in model.named_parameters():
