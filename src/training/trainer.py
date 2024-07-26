@@ -178,9 +178,9 @@ class Phi3VTrainer(Trainer):
 
     # def training_step(self, model, inputs):
     #     for name, param in model.named_parameters():
-    #         if 'vision_model' in name:
+    #         if 'vision_model' in name and param.requires_grad:
     #             print(f"Training parameter {name}")
             
-    #         elif 'img_projection' in name:
+    #         elif 'img_projection' in name and param.requires_grad:
     #             print(f"Training parameter {name}")
     #     return super().training_step(model, inputs)

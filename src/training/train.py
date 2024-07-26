@@ -35,6 +35,23 @@ def find_target_linear_names(model, num_lora_modules=-1, lora_namespan_exclude=[
         rank0_print(f"Found {len(lora_module_names)} lora modules: {lora_module_names}")
     return lora_module_names
 
+def set_requires_grad(parameters, requires_grad):
+    for p in parameters:
+        p.requires_grad = requires_grad
+
+def configure_vision_tower(model, training_args, compute_dtype, device):
+    vision_tower = model.vision_embed_tokens.img_processor.vision_model
+    vision_tower.to(dtype=compute_dtype, device=device)
+
+    img_projection_params = model.vision_embed_tokens.img_projection.parameters()
+    set_requires_grad(img_projection_params, training_args.tune_img_projector)
+
+    vision_model_params = model.vision_embed_tokens.img_processor.vision_model.parameters()
+    set_requires_grad(vision_model_params, not training_args.freeze_vision_tower)
+
+    if training_args.bits in [4, 8]:
+        model.vision_embed_tokens.img_processor.to(dtype=compute_dtype, device=device)
+
 def train():
     global local_rank
 
@@ -43,10 +60,18 @@ def train():
     
     model_args, data_args, training_args = parser.parse_args_into_dataclasses()
 
-    if training_args.lora_enable and training_args.lora_namespan_exclude is not None:
-        training_args.lora_namespan_exclude = ast.literal_eval(training_args.lora_namespan_exclude)
+    if not training_args.lora_enable:
+        assert not training_args.vision_lora, \
+            "Error: training_args.lora_enable is not enabled, but training_args.vision_lora is enabled."
+
     else:
-        training_args.lora_namespan_exclude = []
+        if training_args.lora_namespan_exclude is not None:
+            training_args.lora_namespan_exclude = ast.literal_eval(training_args.lora_namespan_exclude)
+        else:
+            training_args.lora_namespan_exclude = []
+
+        if not training_args.vision_lora:
+            training_args.lora_namespan_exclude += ["vision_model", "img_projection"]
 
     local_rank = training_args.local_rank
     compute_dtype = (torch.float16 if training_args.fp16 else (torch.bfloat16 if training_args.bf16 else torch.float32))
@@ -128,53 +153,13 @@ def train():
     model.config.tokenizer_padding_side = processor.tokenizer.padding_side
     
     # When using LoRA, the model is rapped once more.
-    if training_args.lora_enable:
-        vision_tower = model.model.model.vision_embed_tokens.img_processor.vision_model
-        vision_tower.to(dtype=compute_dtype, device=training_args.device)
-
-        data_args.is_multimodal = True
-
-        if not training_args.tune_img_projector:
-            for p in model.model.model.vision_embed_tokens.img_projection.parameters():
-                p.requires_grad = False
+    if not training_args.vision_lora:
+        if training_args.lora_enable:
+            model_to_configure = model.model.model
         else:
-            for p in model.model.model.vision_embed_tokens.img_projection.parameters():
-                p.requires_grad = True
+            model_to_configure = model.model
 
-        if training_args.freeze_vision_tower:
-            for p in model.model.model.vision_embed_tokens.img_processor.vision_model.parameters():
-                p.requires_grad = False
-        else:
-            for p in model.model.model.vision_embed_tokens.img_processor.vision_model.parameters():
-                p.requires_grad = True
-
-
-        if training_args.bits in [4, 8]:
-            model.model.model.vision_embed_tokens.img_processor.to(dtype=compute_dtype, device=training_args.device)
-
-    else:
-        vision_tower = model.model.vision_embed_tokens.img_processor.vision_model
-        vision_tower.to(dtype=compute_dtype, device=training_args.device)
-
-        data_args.is_multimodal = True
-
-        if not training_args.tune_img_projector:
-            for p in model.model.vision_embed_tokens.img_projection.parameters():
-                p.requires_grad = False
-        else:
-            for p in model.model.vision_embed_tokens.img_projection.parameters():
-                p.requires_grad = True
-
-        if training_args.freeze_vision_tower:
-            for p in model.model.vision_embed_tokens.img_processor.vision_model.parameters():
-                p.requires_grad = False
-        else:
-            for p in model.model.vision_embed_tokens.img_processor.vision_model.parameters():
-                p.requires_grad = True
-
-
-        if training_args.bits in [4, 8]:
-            model.model.vision_embed_tokens.img_processor.to(dtype=compute_dtype, device=training_args.device)
+        configure_vision_tower(model_to_configure, training_args, compute_dtype, training_args.device)
 
     model.config.vision_lr = training_args.vision_lr
     model.config.projector_lr = training_args.projector_lr
