@@ -80,8 +80,6 @@ def train():
     if training_args.bits in [4,8]:
         bnb_model_from_pretrained_args.update(dict(
             device_map={"":training_args.device},
-            load_in_4bit=training_args.bits==4,
-            load_in_8bit=training_args.bits==8,
             quantization_config = BitsAndBytesConfig(
                 load_in_4bit=training_args.bits==4,
                 load_in_8bit=training_args.bits==8,
@@ -166,16 +164,17 @@ def train():
 
     if training_args.bits in [4, 8]:
         from peft.tuners.lora import LoraLayer
-        for name, module in model.named_module():
+        for name, module in model.named_modules():
             if isinstance(module, LoraLayer):
                 if training_args.bf16:
                     module = module.to(torch.bfloat16)
             if 'norm' in name:
                 module = module.to(torch.float32)
             
-            if 'lm_head' in name or 'embed_token' in name:
-                if training_args.bf16 and module.weight.dtype == torch.float32:
-                    module.weight = module.weight.to(torch.bfloat16)
+            if ('lm_head' in name or 'embed_token' in name) and 'vision_embed_token' not in name:
+                if hasattr(module, 'weight'):
+                    if training_args.bf16 and module.weight.dtype == torch.float32:
+                        module = module.to(torch.bfloat16)
 
     data_module = make_supervised_data_module(processor=processor,
                                               data_args=data_args)
