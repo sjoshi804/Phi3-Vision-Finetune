@@ -1,9 +1,10 @@
 # Fine-tuning Phi3-Vision
 
-This repository contains a script for training the [Phi3-Vision model](https://huggingface.co/microsoft/Phi-3-vision-128k-instruct).
+This repository contains a script for training the [Phi3-Vision model](https://huggingface.co/microsoft/Phi-3-vision-128k-instruct) and [Phi3.5-Vision model](https://huggingface.co/microsoft/Phi-3.5-vision-instruct)
 
 ## Update
 
+- [2024/08/22] 🔥Now supports Phi3.5-Vision.
 - [2024/07/26] 🔥Supports training vision_model with lora.
 - [2024/07/16] Adding flash-attn to vision_model following the official implementation from phi3-vision repo.
 - [2024/07/16] 🔥Feature update for setting different lr in projector and vision_model.
@@ -16,7 +17,6 @@ This repository contains a script for training the [Phi3-Vision model](https://h
 - [Installation](#installation)
   - [Using `requirements.txt`](#using-requirementstxt)
   - [Using `environment.yaml`](#using-environmentyaml)
-- [Model Download](#model-download)
 - [Dataset Preparation](#dataset-preparation)
 - [Training](#training)
   - [Full Finetuning](#full-finetuning)
@@ -56,27 +56,11 @@ pip install flash-attn --no-build-isolation
 
 **Note:** You should install the `flash-attn` after running other libraries with `requirements.txt` or `environment.yaml`.
 
-## Model Download
-
-Before training, download the Phi3-V model from HuggingFace. It is recommended to use the `huggingface-cli` to do this.
-
-1. Install the HuggingFace CLI:
-
-```bash
-pip install -U "huggingface_hub[cli]"
-```
-
-2. Download the model:
-
-```bash
-huggingface-cli download microsoft/Phi-3-vision-128k-instruct --local-dir Phi-3-vision-128k-instruct --resume-download
-```
-
 ## Dataset Preparation
 
 The script requires a dataset formatted according to the LLaVA specification. The dataset should be a JSON file where each entry contains information about conversations and images. Ensure that the image paths in the dataset match the provided `--image_folder`.<br>
 
-**When using multi-image dataset, the image tokens should all be `<image>`.**
+**When using a multi-image dataset, the image tokens should all be `<image>`, and the image file names should have been in a list.**
 
 <details>
 <summary>Example Dataset</summary>
