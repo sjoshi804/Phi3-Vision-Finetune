@@ -17,6 +17,25 @@ IMAGE_TOKEN_INDEX = -200
 IGNORE_INDEX = -100
 LLaVA_IMAGE_TOKEN = "<image>"
 
+def pad_sequence(sequences, padding_side='right', padding_value=0):
+    """
+    Pad a list of sequences to the same length.
+    sequences: list of tensors in [seq_len, *] shape
+    """
+    assert padding_side in ['right', 'left']
+    max_size = sequences[0].size()
+    trailing_dims = max_size[1:]
+    max_len = max(len(seq) for seq in sequences)
+    batch_size = len(sequences)
+    output = sequences[0].new_full((batch_size, max_len) + trailing_dims, padding_value)
+    for i, seq in enumerate(sequences):
+        length = seq.size(0)
+        if padding_side == 'right':
+            output.data[i, :length] = seq
+        else:
+            output.data[i, -length:] = seq
+    return output
+
 class LazySupervisedDataset(Dataset):
     """Dataset for supervised fine-tuning."""
 
@@ -106,13 +125,8 @@ class LazySupervisedDataset(Dataset):
         input_ids = torch.cat(all_input_ids, dim=0).to(torch.long)
         labels = torch.cat(all_labels, dim=0).to(torch.long)
 
-        # Handling pixel values and image sizes as tensors
-        if len(all_pixel_values) > 0:
-            pixel_values = torch.cat(all_pixel_values, dim=0)
-            image_sizes = torch.cat(all_image_sizes, dim=0)
-        else:
-            pixel_values = None
-            image_sizes = None
+        pixel_values = torch.cat(all_pixel_values, dim=0)
+        image_sizes = torch.cat(all_image_sizes, dim=0)
 
         attention_mask = (input_ids > -1000000).to(torch.long)
 
@@ -130,35 +144,37 @@ class LazySupervisedDataset(Dataset):
 class DataCollatorForSupervisedDataset(object):
     """Collate examples for supervised fine-tuning."""
 
-    tokenizer: transformers.PreTrainedTokenizer
+    def __init__(self, pad_token_id: int):
+        self.pad_token_id = pad_token_id
 
-    def __call__(self, instances: Sequence[Dict]) -> Dict[str, torch.Tensor]:
-        input_ids, labels = tuple([instance[key] for instance in instances]
-                                  for key in ("input_ids", "labels"))
-        input_ids = torch.nn.utils.rnn.pad_sequence(
-            input_ids,
-            batch_first=True,
-            padding_value=self.tokenizer.pad_token_id)
-        labels = torch.nn.utils.rnn.pad_sequence(
-            labels,
-            batch_first=True,
-            padding_value=IGNORE_INDEX)
-        input_ids = input_ids[:, :self.tokenizer.model_max_length]
-        labels = labels[:, :self.tokenizer.model_max_length]
+    def __call__(self, examples):
+        batch_input_ids = []
+        batch_label_ids = []
+        batch_pixel_values = []
+        batch_image_sizes = []
 
-        pixel_values = [instance["pixel_values"] for instance in instances]
-        pixel_values = torch.stack(pixel_values, dim=0)
-        image_sizes = [instance["image_sizes"] for instance in instances]
-        image_sizes = torch.stack(image_sizes, dim=0)
-
-        batch = dict(
-            input_ids=input_ids,
-            labels=labels,
-            pixel_values=pixel_values,
-            image_sizes=image_sizes,
-            attention_mask=input_ids.ne(self.tokenizer.pad_token_id),
+        for example in examples:
+            batch_input_ids.append(example["input_ids"])
+            batch_label_ids.append(example["labels"])
+            batch_pixel_values.append(example["pixel_values"])
+            batch_image_sizes.append(example["image_sizes"])
+        
+        input_ids = pad_sequence(
+            batch_input_ids, padding_side='right', padding_value=self.pad_token_id
         )
-        return batch
+
+        attention_mask = input_ids != self.pad_token_id
+        labels = pad_sequence(batch_label_ids, padding_side='right', padding_value=IGNORE_INDEX)
+        pixel_values = torch.cat(batch_pixel_values, dim=0)
+        image_sizes = torch.cat(batch_image_sizes, dim=0)
+
+        return {
+            'input_ids': input_ids,
+            'labels': labels,
+            'attention_mask': attention_mask,
+            'pixel_values': pixel_values,
+            'image_sizes': image_sizes,
+        }
     
 
 def replace_image_tokens(input_string, start_count=1):
@@ -193,7 +209,7 @@ def make_supervised_data_module(processor, data_args):
     sft_dataset = LazySupervisedDataset(
         data_path=data_args.data_path, processor=processor, data_args=data_args
     )
-    data_collator = DataCollatorForSupervisedDataset(tokenizer=processor.tokenizer)
+    data_collator = DataCollatorForSupervisedDataset(pad_token_id=processor.tokenizer.pad_token_id)
 
     return dict(train_dataset=sft_dataset,
                 eval_dataset=None,

@@ -141,7 +141,7 @@ def train():
                                                cache_dir=training_args.cache_dir, 
                                                padding_side='right',
                                                trust_remote_code=True,
-                                               num_crops = training_args.num_crops,
+                                               num_crops=training_args.num_crops,
                                                model_max_length=training_args.max_seq_length)
     
 
