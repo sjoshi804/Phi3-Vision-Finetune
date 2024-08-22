@@ -6,6 +6,7 @@ MODEL_NAME="microsoft/Phi-3.5-vision-instruct"
 
 export PYTHONPATH=src:$PYTHONPATH
 
+# You should add load-8bit or load-4bit if you've trained with QLoRA.
 python src/merge_lora_weights.py \
     --model-path /path/to/model \
     --model-base $MODEL_NAME  \
