@@ -20,7 +20,8 @@ deepspeed src/training/train.py \
     --tune_img_projector True \
     --freeze_vision_tower False \
     --bf16 True \
-    --output_dir output/testing \
+    --output_dir output/testing_lora \
+    --num_crops 16 \
     --num_train_epochs 1 \
     --per_device_train_batch_size 4\
     --gradient_accumulation_steps 8 \

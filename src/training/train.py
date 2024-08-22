@@ -62,6 +62,8 @@ def train():
     
     model_args, data_args, training_args = parser.parse_args_into_dataclasses()
 
+    assert training_args.num_crops <= 16, 'num_crops must be less than or equal to 16'
+
     if not training_args.lora_enable:
         assert not training_args.vision_lora, \
             "Error: training_args.lora_enable is not enabled, but training_args.vision_lora is enabled."
@@ -138,7 +140,8 @@ def train():
     processor = AutoProcessor.from_pretrained(model_args.model_id,
                                                cache_dir=training_args.cache_dir, 
                                                padding_side='right',
-                                               trust_remote_code=True, 
+                                               trust_remote_code=True,
+                                               num_crops = training_args.num_crops,
                                                model_max_length=training_args.max_seq_length)
     
 

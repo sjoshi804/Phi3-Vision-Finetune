@@ -53,6 +53,7 @@ class TrainingArguments(TrainingArguments):
     vision_lr: Optional[float] = None
     lora_namespan_exclude: str = field(default=None, metadata={"help": "List of namespan to exclude for LoRA"})
     num_lora_modules: int = -1
+    num_crops: int = 16
 
 
 

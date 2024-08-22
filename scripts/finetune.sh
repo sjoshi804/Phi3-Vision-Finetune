@@ -15,6 +15,7 @@ deepspeed src/training/train.py \
     --freeze_vision_tower False \
     --bf16 True \
     --output_dir output/test_train \
+    --num_crops 16 \
     --num_train_epochs 1 \
     --per_device_train_batch_size 4 \
     --gradient_accumulation_steps 4 \

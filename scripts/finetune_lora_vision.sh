@@ -22,6 +22,7 @@ deepspeed src/training/train.py \
     --freeze_vision_tower False \
     --bf16 True \
     --output_dir output/lora_vision_test \
+    --num_crops 16 \
     --num_train_epochs 2 \
     --per_device_train_batch_size 4 \
     --gradient_accumulation_steps 4 \
