@@ -220,6 +220,7 @@ You can launch gradio based demo with this command. This can also set some other
 - [x] Supporting multi-image training and inference.
 - [x] Demo with WebUI
 - [x] Support Phi3.5-vision
+- [ ] Supprot for video data
 
 ## Known Issues
 

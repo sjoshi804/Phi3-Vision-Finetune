@@ -47,7 +47,7 @@ class LazySupervisedDataset(Dataset):
 
         processor = self.processor
         if "image" in sources:
-            image_file = sources["image"]
+            image_files = sources["image"]
             image_folder = self.data_args.image_folder
 
             if isinstance(image_files, str):
@@ -70,14 +70,12 @@ class LazySupervisedDataset(Dataset):
         all_pixel_values = []
         all_image_sizes = []
 
+        for idx, j in enumerate(range(0, len(sources), 2)):
+            user_input = sources[j]
+            gpt_response = sources[j + 1]
 
-        # TODO: Need to fix from here. Add bos, eos, and pixel values.
-        for idx, j in range(0, len(sources), 2):
-            user_input = sources[j]['value']
-            gpt_response = sources[j + 1]['value']
-
-            user_input = processor.tokenizer.apply_chat_template(user_input, tokenize=False)
-            gpt_response = processor.tokenizer.apply_chat_template(gpt_response, tokenize=False)
+            user_input = processor.tokenizer.apply_chat_template([user_input], tokenize=False)
+            gpt_response = processor.tokenizer.apply_chat_template([gpt_response], tokenize=False)
 
             if idx == 0:
                 inputs = processor(user_input, images, return_tensors='pt')
@@ -103,7 +101,7 @@ class LazySupervisedDataset(Dataset):
             all_labels.append(labels)
 
         all_input_ids.append(torch.tensor([32000]))  # eos token id
-        all_labels.append(torch.tensor([32000]))  # ignore eos token
+        all_labels.append(torch.tensor([32000]))  # eos token id
         
         input_ids = torch.cat(all_input_ids, dim=0).to(torch.long)
         labels = torch.cat(all_labels, dim=0).to(torch.long)
