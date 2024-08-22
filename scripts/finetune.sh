@@ -1,10 +1,14 @@
 #!/bin/bash
 
+# You can use phi3 instead of phi3.5
+MODEL_NAME="microsoft/Phi-3.5-vision-instruct"
+# MODEL_NAME="microsoft/Phi-3-vision-128k-instruct"
+
 export PYTHONPATH=src:$PYTHONPATH
 
 deepspeed src/training/train.py \
     --deepspeed scripts/zero3.json \
-    --model_id microsoft/Phi-3-vision-128k-instruct \
+    --model_id $MODEL_NAME \
     --data_path /path/to/your/training/data.json \
     --image_folder /path/to/your/image/folder \
     --tune_img_projector True \

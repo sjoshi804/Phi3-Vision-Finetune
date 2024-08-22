@@ -1,7 +1,7 @@
-from src.phi3_vision import Phi3VForCausalLM, Phi3VConfig, Phi3VProcessor
+# from src.phi3_vision import Phi3VForCausalLM, Phi3VConfig, Phi3VProcessor
 from peft import PeftModel
 import torch
-from transformers import BitsAndBytesConfig, AutoModelForCausalLM, AutoProcessor
+from transformers import BitsAndBytesConfig, AutoModelForCausalLM, AutoProcessor, AutoConfig
 import warnings
 import os
 
@@ -38,10 +38,10 @@ def load_pretrained_model(model_path, model_base, model_name, load_8bit=False, l
     if 'lora' in model_name.lower() and model_base is None:
         warnings.warn('There is `lora` in model name but no `model_base` is provided. If you are loading a LoRA model, please provide the `model_base` argument.')
     if 'lora' in model_name.lower() and model_base is not None:
-        lora_cfg_pretrained = Phi3VConfig.from_pretrained(model_path)
-        processor = Phi3VProcessor.from_pretrained(model_base)
+        lora_cfg_pretrained = AutoConfig.from_pretrained(model_path)
+        processor = AutoProcessor.from_pretrained(model_base)
         print('Loading Phi3-Vision from base model...')
-        model = Phi3VForCausalLM.from_pretrained(model_base, low_cpu_mem_usage=True, config=lora_cfg_pretrained, **kwargs)
+        model = AutoModelForCausalLM.from_pretrained(model_base, low_cpu_mem_usage=True, config=lora_cfg_pretrained, **kwargs)
         token_num, tokem_dim = model.lm_head.out_features, model.lm_head.in_features
         if model.lm_head.weight.shape[0] != token_num:
             model.lm_head.weight = torch.nn.Parameter(torch.empty(token_num, tokem_dim, device=model.device, dtype=model.dtype))
@@ -63,8 +63,8 @@ def load_pretrained_model(model_path, model_base, model_name, load_8bit=False, l
         print('Model Loaded!!!')
 
     else:
-        processor = Phi3VProcessor.from_pretrained(model_path)
-        model = Phi3VForCausalLM.from_pretrained(model_path, low_cpu_mem_usage=True, **kwargs)
+        processor = AutoProcessor.from_pretrained(model_path)
+        model = AutoModelForCausalLM.from_pretrained(model_path, low_cpu_mem_usage=True, **kwargs)
 
     return processor, model
 

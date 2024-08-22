@@ -44,61 +44,88 @@ class LazySupervisedDataset(Dataset):
 
     def __getitem__(self, i) -> Dict[str, torch.Tensor]:
         sources = self.list_data_dict[i]
-        if isinstance(i, int):
-            sources = [sources]
-        assert len(sources) == 1, "Don't know why it is wrapped to a list"  # FIXME
+
         processor = self.processor
-        if "image" in sources[0]:
-            image_file = self.list_data_dict[i]["image"]
+        if "image" in sources:
+            image_file = sources["image"]
             image_folder = self.data_args.image_folder
 
-            if not os.path.exists(image_file):
-                image_file = os.path.join(image_folder, image_file)
-            image = [Image.open(image_file).convert("RGB")]
+            if isinstance(image_files, str):
+                image_files = [image_files]
+
+            images = []
+           
+            for image_file in image_files:
+                if not os.path.exists(image_file):
+                    image_file = os.path.join(image_folder, image_file)
+                images.append(Image.open(image_file).convert("RGB"))
+
         else:
-            image = None
-        sources = copy.deepcopy([e["conversations"] for e in sources])
-        for i in range(len(sources)):
-            sources[i] = llava_to_openai(sources[i])
+            images = None
 
-        prompt = processor.tokenizer.apply_chat_template(sources[0], tokenize=False)
+        sources = copy.deepcopy(llava_to_openai(sources['conversations']))
 
-        prompt += processor.tokenizer.eos_token
+        all_input_ids = [torch.tensor([1])] # bos token id
+        all_labels = [torch.tensor([-100])] # ignore bos token
+        all_pixel_values = []
+        all_image_sizes = []
 
-        data_dict = processor(prompt, image, return_tensors="pt")
 
-        if self.padding:
-            # data_dict = processor.tokenizer.pad(
-            #     data_dict,
-            #     padding="max_length",
-            #     max_length=training_length,
-            #     return_tensors="pt",
-            # )
-            if 'pixel_values' not in data_dict:
-                data_dict['pixel_values'] = torch.zeros([1, 17, 3, 336, 336], dtype=torch.bfloat16)
-                data_dict['image_sizes'] = torch.zeros([1, 2], dtype=torch.int64)
-            
-            data_dict = dict(
-                input_ids=data_dict["input_ids"][0],
-                attention_mask=data_dict["attention_mask"][0],
-                pixel_values=data_dict["pixel_values"][0],
-                image_sizes=data_dict["image_sizes"][0],
-                labels=data_dict["labels"][0],
-                # labels=processor.tokenizer.pad(
-                #     {"input_ids": data_dict["labels"][0]},
-                #     padding="max_length",
-                #     max_length=training_length,
-                #     return_tensors="pt",
-                # ).input_ids,
+        # TODO: Need to fix from here. Add bos, eos, and pixel values.
+        for idx, j in range(0, len(sources), 2):
+            user_input = sources[j]['value']
+            gpt_response = sources[j + 1]['value']
+
+            user_input = processor.tokenizer.apply_chat_template(user_input, tokenize=False)
+            gpt_response = processor.tokenizer.apply_chat_template(gpt_response, tokenize=False)
+
+            if idx == 0:
+                inputs = processor(user_input, images, return_tensors='pt')
+                prompt_input_ids = inputs['input_ids']
+                all_pixel_values.append(inputs['pixel_values'])
+                all_image_sizes.append(inputs['image_sizes'])
+
+            else:
+                prompt_input_ids = processor.tokenizer(user_input, add_special_tokens=False, return_tensors='pt')['input_ids']
+
+            response_input_ids = processor.tokenizer(gpt_response, add_special_tokens=False, return_tensors='pt')['input_ids']
+
+            input_ids = torch.cat([prompt_input_ids, response_input_ids], dim=1).squeeze(0)
+            labels = torch.cat(
+                [
+                    torch.tensor([IGNORE_INDEX] * len(prompt_input_ids[0])),  
+                    response_input_ids.squeeze(0),
+                ],
+                dim=0,
             )
+
+            all_input_ids.append(input_ids)
+            all_labels.append(labels)
+
+        all_input_ids.append(torch.tensor([32000]))  # eos token id
+        all_labels.append(torch.tensor([32000]))  # ignore eos token
+        
+        input_ids = torch.cat(all_input_ids, dim=0).to(torch.long)
+        labels = torch.cat(all_labels, dim=0).to(torch.long)
+
+        # Handling pixel values and image sizes as tensors
+        if len(all_pixel_values) > 0:
+            pixel_values = torch.cat(all_pixel_values, dim=0)
+            image_sizes = torch.cat(all_image_sizes, dim=0)
         else:
-            data_dict = dict(
-                input_ids=data_dict["input_ids"][0],
-                attention_mask=data_dict["attention_mask"][0],
-                pixel_values=data_dict["pixel_values"][0],
-                image_sizes=data_dict["image_sizes"][0],
-                labels=data_dict["labels"][0],
-            )
+            pixel_values = None
+            image_sizes = None
+
+        attention_mask = (input_ids > -1000000).to(torch.long)
+
+        data_dict = dict(
+            input_ids=input_ids,
+            pixel_values=pixel_values,
+            image_sizes=image_sizes,
+            attention_mask=attention_mask,
+            labels=labels,
+        )
+        
         return data_dict
 
 @dataclass

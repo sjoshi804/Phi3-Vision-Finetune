@@ -7,7 +7,8 @@ import ast
 from transformers import AutoProcessor, BitsAndBytesConfig
 import sys
 
-from phi3_vision import Phi3VForCausalLM, Phi3VConfig, Phi3VProcessor
+# from phi3_vision import Phi3VForCausalLM, Phi3VConfig, Phi3VProcessor
+from transformers import AutoProcessor, AutoModelForCausalLM
 from training.trainer import Phi3VTrainer
 from training.data import make_supervised_data_module
 from training.params import DataArguments, ModelArguments, TrainingArguments
@@ -92,17 +93,14 @@ def train():
                 bnb_4bit_quant_type=training_args.quant_type,
             )
         ))
-    
-    config = Phi3VConfig.from_pretrained(model_args.model_id)
 
-    if training_args.disable_flash_attn2:
-        config._attn_implementation = "eager"
 
-    model = Phi3VForCausalLM.from_pretrained(
+    model = AutoModelForCausalLM.from_pretrained(
         model_args.model_id,
-        config=config,
         torch_dtype=compute_dtype,
         cache_dir=training_args.cache_dir, 
+        trust_remote_code=True,
+        _attn_implementation="flash_attention_2" if not training_args.disable_flash_attn2 else "eager", 
         **bnb_model_from_pretrained_args
     )
 
@@ -137,9 +135,10 @@ def train():
         rank0_print("Adding LoRA to the model...")
         model = get_peft_model(model, peft_config)
 
-    processor = Phi3VProcessor.from_pretrained(model_args.model_id,
+    processor = AutoProcessor.from_pretrained(model_args.model_id,
                                                cache_dir=training_args.cache_dir, 
-                                               padding_side='right', 
+                                               padding_side='right',
+                                               trust_remote_code=True, 
                                                model_max_length=training_args.max_seq_length)
     
 
