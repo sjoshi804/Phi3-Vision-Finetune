@@ -1,4 +1,4 @@
-# Fine-tuning Phi3-Vision
+# Fine-tuning Phi3.x-Vision Series
 
 This repository contains a script for training the [Phi3-Vision model](https://huggingface.co/microsoft/Phi-3-vision-128k-instruct) and [Phi3.5-Vision model](https://huggingface.co/microsoft/Phi-3.5-vision-instruct)
 
@@ -34,6 +34,7 @@ This repository contains a script for training the [Phi3-Vision model](https://h
 - Enable finetuning `img_projector` and `vision_model` while using LoRA.
 - Disable/enable Flash Attention 2
 - Multi-image training and inference
+- Selecting Phi3-vision and Phi3.5-Vision
 
 ## Installation
 
@@ -146,7 +147,8 @@ bash scripts/finetune_lora_vision.sh
 - `--learning_rate` (float): Learning rate for language module.
 - `--bf16` (bool): Option for using bfloat16.
 - `--lora_namespan_exclude` (str): Exclude modules with namespans to add LoRA.
-- `--max_seq_length` (int): Maximum sequence length (defaut: 128K).
+- `--max_seq_length` (int): Maximum sequence length (default: 128K).
+- `--num_crops` (int): Maximum crop for large size images (default: 16)
 - `--bits` (int): Quantization bits (default: 16).
 - `--disable_flash_attn2` (bool): Disable Flash Attention 2.
 - `--report_to` (str): Reporting tool (choices: 'tensorboard', 'wandb', 'none') (default: 'tensorboard').
@@ -217,7 +219,7 @@ You can launch gradio based demo with this command. This can also set some other
 - [x] Saving in safetensor
 - [x] Supporting multi-image training and inference.
 - [x] Demo with WebUI
-- [ ] Mixture of Experts training support.
+- [x] Support Phi3.5-vision
 
 ## Known Issues
 
