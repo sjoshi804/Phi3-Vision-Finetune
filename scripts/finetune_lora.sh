@@ -6,6 +6,8 @@ MODEL_NAME="microsoft/Phi-3.5-vision-instruct"
 
 export PYTHONPATH=src:$PYTHONPATH
 
+# If you want to tune the `embed_token` with LoRA, You need to tune `lm_head` together
+
 deepspeed src/training/train.py \
     --lora_enable True \
     --lora_namespan_exclude "['lm_head', 'embed_tokens']" \

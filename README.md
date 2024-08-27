@@ -128,6 +128,8 @@ If you want to train both the language model and the vision model with LoRA:
 bash scripts/finetune_lora_vision.sh
 ```
 
+**Note:** If you want to tune the `embed_token` with LoRA, You need to tune `lm_head` together.
+
 <details>
 <summary>Training arguments</summary>
 
