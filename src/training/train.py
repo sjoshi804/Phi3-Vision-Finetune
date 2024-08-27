@@ -23,12 +23,17 @@ def rank0_print(*args):
 
 def find_target_linear_names(model, num_lora_modules=-1, lora_namespan_exclude=[], verbose=True):
     linear_cls = torch.nn.modules.Linear
+    embedding_cls = torch.nn.modules.Embedding
     lora_module_names = []
-    lora_namespan_exclude += ["vision_model", "img_projection"]
+
+    if 'embed_tokens' in lora_namespan_exclude:
+        lora_namespan_exclude.remove('embed_tokens')
+        lora_namespan_exclude += ['model.embed_tokens']
+
     for name, module in model.named_modules():
         if any(ex_keyword in name for ex_keyword in lora_namespan_exclude):
             continue
-        if isinstance(module, linear_cls):
+        if isinstance(module, (linear_cls, embedding_cls)):
             lora_module_names.append(name)
     
     if num_lora_modules > 0:

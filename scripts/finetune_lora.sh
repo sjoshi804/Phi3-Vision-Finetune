@@ -8,7 +8,7 @@ export PYTHONPATH=src:$PYTHONPATH
 
 deepspeed src/training/train.py \
     --lora_enable True \
-    --lora_namespan_exclude "['lm_head']" \
+    --lora_namespan_exclude "['lm_head', 'embed_tokens']" \
     --lora_rank 128 \
     --lora_alpha 256 \
     --lora_dropout 0.05 \
