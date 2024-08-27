@@ -39,6 +39,8 @@ def load_pretrained_model(model_path, model_base, model_name, load_8bit=False, l
         warnings.warn('There is `lora` in model name but no `model_base` is provided. If you are loading a LoRA model, please provide the `model_base` argument.')
     if 'lora' in model_name.lower() and model_base is not None:
         lora_cfg_pretrained = AutoConfig.from_pretrained(model_path)
+        if hasattr(lora_cfg_pretrained, 'quantization_config'):
+            del lora_cfg_pretrained.quantization_config
         processor = AutoProcessor.from_pretrained(model_base)
         print('Loading Phi3-Vision from base model...')
         model = AutoModelForCausalLM.from_pretrained(model_base, low_cpu_mem_usage=True, config=lora_cfg_pretrained, **kwargs)
