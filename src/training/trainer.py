@@ -11,14 +11,32 @@ from transformers.trainer import (
     WEIGHTS_NAME,
     TRAINING_ARGS_NAME,
     SAFE_WEIGHTS_NAME,
+    TRAINER_STATE_NAME,
+    PREFIX_CHECKPOINT_DIR,
     logger,
 )
 import safetensors
 from peft import PeftModel
 from typing import Optional
+import numpy as np
 from transformers.processing_utils import ProcessorMixin
 from transformers.modeling_utils import PreTrainedModel
 from peft import PeftModel
+from training.train_utils import get_peft_state_maybe_zero_3, get_peft_state_non_lora_maybe_zero_3
+
+def maybe_zero_3(param, ignore_status=False, name=None):
+    from deepspeed import zero
+    from deepspeed.runtime.zero.partition_parameters import ZeroParamStatus
+
+    if hasattr(param, "ds_id"):
+        if param.ds_status == ZeroParamStatus.NOT_AVAILABLE:
+            if not ignore_status:
+                print(name, "no ignore status")
+        with zero.GatheredParameters([param]):
+            param = param.data.detach().cpu().clone()
+    else:
+        param = param.detach().cpu().clone()
+    return param
 
 class Phi3VTrainer(Trainer):
 
@@ -26,11 +44,9 @@ class Phi3VTrainer(Trainer):
         super(Phi3VTrainer, self).__init__(*args, **kwargs)
         self.processor = processor
 
-    # This code is from LLaVA
     def create_optimizer(self):
         """
         Setup the optimizer.
-
         We provide a reasonable default that works well. If you want to use something else, you can pass a tuple in the
         Trainer's init through `optimizers`, or subclass and override this method in a subclass.
         """
@@ -42,73 +58,47 @@ class Phi3VTrainer(Trainer):
         if self.optimizer is None:
             decay_parameters = get_parameter_names(opt_model, ALL_LAYERNORM_LAYERS)
             decay_parameters = [name for name in decay_parameters if "bias" not in name]
-            if self.args.vision_lr is not None and self.args.projector_lr is not None:
-                
-                vision_parameters = [
-                    name for name, _ in opt_model.named_parameters() 
-                    if "vision_model" in name 
-                ]
-                
-                # glb_GN and sub_GN are the parameters for merging the output of channel dimension
-                img_projection_parameters = [
-                    name for name, _ in opt_model.named_parameters() 
-                    if "img_projection" in name or "glb_GN" in name or "sub_GN" in name
-                ]
-
+            lr_mapper = {}
+            if self.args.projector_lr is not None:
+                lr_mapper["img_projection"] = self.args.projector_lr
+            if self.args.vision_lr is not None:
+                lr_mapper["vision_model"] = self.args.vision_lr
+            if len(lr_mapper) > 0:
+                special_lr_parameters = [name for name, _ in opt_model.named_parameters() if any(module_keyword in name for module_keyword in lr_mapper)]
                 optimizer_grouped_parameters = [
                     {
-                        "params": [
-                            p for n, p in opt_model.named_parameters() if (n in decay_parameters and n not in vision_parameters and n not in img_projection_parameters and p.requires_grad)
-                        ],
+                        "params": [p for n, p in opt_model.named_parameters() if (n in decay_parameters and n not in special_lr_parameters and p.requires_grad)],
                         "weight_decay": self.args.weight_decay,
                     },
                     {
-                        "params": [
-                            p for n, p in opt_model.named_parameters() if (n not in decay_parameters and n not in vision_parameters and n not in img_projection_parameters and p.requires_grad)
-                        ],
+                        "params": [p for n, p in opt_model.named_parameters() if (n not in decay_parameters and n not in special_lr_parameters and p.requires_grad)],
                         "weight_decay": 0.0,
-                    },
-                    {
-                        "params": [
-                            p for n, p in opt_model.named_parameters() if (n in decay_parameters and n in vision_parameters and p.requires_grad)
-                        ],
-                        "weight_decay": self.args.weight_decay,
-                        "lr": self.args.vision_lr,
-                    },
-                    {
-                        "params": [
-                            p for n, p in opt_model.named_parameters() if (n not in decay_parameters and n in vision_parameters and p.requires_grad)
-                        ],
-                        "weight_decay": 0.0,
-                        "lr": self.args.vision_lr,
-                    },
-                    {
-                        "params": [
-                            p for n, p in opt_model.named_parameters() if (n in decay_parameters and n in img_projection_parameters and p.requires_grad)
-                        ],
-                        "weight_decay": self.args.weight_decay,
-                        "lr": self.args.projector_lr,
-                    },
-                    {
-                        "params": [
-                            p for n, p in opt_model.named_parameters() if (n not in decay_parameters and n in img_projection_parameters and p.requires_grad)
-                        ],
-                        "weight_decay": 0.0,
-                        "lr": self.args.projector_lr,
                     },
                 ]
+                for module_keyword, lr in lr_mapper.items():
+                    module_parameters = [name for name, _ in opt_model.named_parameters() if module_keyword in name]
+                    optimizer_grouped_parameters.extend(
+                        [
+                            {
+                                "params": [p for n, p in opt_model.named_parameters() if (n in decay_parameters and n in module_parameters and p.requires_grad)],
+                                "weight_decay": self.args.weight_decay,
+                                "lr": lr,
+                            },
+                            {
+                                "params": [p for n, p in opt_model.named_parameters() if (n not in decay_parameters and n in module_parameters and p.requires_grad)],
+                                "weight_decay": 0.0,
+                                "lr": lr,
+                            },
+                        ]
+                    )
             else:
                 optimizer_grouped_parameters = [
                     {
-                        "params": [
-                            p for n, p in opt_model.named_parameters() if (n in decay_parameters and p.requires_grad)
-                        ],
+                        "params": [p for n, p in opt_model.named_parameters() if (n in decay_parameters and p.requires_grad)],
                         "weight_decay": self.args.weight_decay,
                     },
                     {
-                        "params": [
-                            p for n, p in opt_model.named_parameters() if (n not in decay_parameters and p.requires_grad)
-                        ],
+                        "params": [p for n, p in opt_model.named_parameters() if (n not in decay_parameters and p.requires_grad)],
                         "weight_decay": 0.0,
                     },
                 ]
@@ -132,9 +122,60 @@ class Phi3VTrainer(Trainer):
 
         return self.optimizer
 
-
     def _save_checkpoint(self, model, trial, metrics=None):
-        super(Phi3VTrainer, self)._save_checkpoint(model, trial, metrics)
+        if self.args.lora_enable:
+            checkpoint_folder = f"{PREFIX_CHECKPOINT_DIR}-{self.state.global_step}"
+
+            if self.hp_search_backend is None and trial is None:
+                self.store_flos()
+
+            run_dir = self._get_output_dir(trial=trial)
+            output_dir = os.path.join(run_dir, checkpoint_folder)
+
+            self.save_model(output_dir, _internal_call=True)
+
+            non_lora_weights = get_peft_state_non_lora_maybe_zero_3(self.model.named_parameters(), require_grad_only=False)
+            torch.save(non_lora_weights, os.path.join(output_dir, "non_lora_state_dict.bin"))
+
+            if not self.args.save_only_model:
+                # Save optimizer and scheduler
+                self._save_optimizer_and_scheduler(output_dir)
+                # Save RNG state
+                self._save_rng_state(output_dir)
+
+            # Determine the new best metric / best model checkpoint
+            if metrics is not None and self.args.metric_for_best_model is not None:
+                metric_to_check = self.args.metric_for_best_model
+                if not metric_to_check.startswith("eval_"):
+                    metric_to_check = f"eval_{metric_to_check}"
+                metric_value = metrics[metric_to_check]
+
+                operator = np.greater if self.args.greater_is_better else np.less
+                if (
+                    self.state.best_metric is None
+                    or self.state.best_model_checkpoint is None
+                    or operator(metric_value, self.state.best_metric)
+                ):
+                    self.state.best_metric = metric_value
+                    self.state.best_model_checkpoint = output_dir
+
+            # Save the Trainer state
+            if self.args.should_save:
+                # Update the `TrainerControl` state to where we are currently
+                self.state.stateful_callbacks["TrainerControl"] = self.control.state()
+                self.state.save_to_json(os.path.join(output_dir, TRAINER_STATE_NAME))
+
+            if self.args.push_to_hub:
+                self._push_from_checkpoint(output_dir)
+
+            # Maybe delete some older checkpoints.
+            if self.args.should_save:
+                # Solely rely on numerical checkpoint id for rotation.
+                # mtime is not reliable especially on some fuse fs in cloud environments.
+                self._rotate_checkpoints(use_mtime=False, output_dir=run_dir)
+
+        else:
+            super(Phi3VTrainer, self)._save_checkpoint(model, trial, metrics)
 
     def _save(self, output_dir: Optional[str] = None, state_dict=None):
             # If we are executing this function, we are the process zero, so we don't check for that.

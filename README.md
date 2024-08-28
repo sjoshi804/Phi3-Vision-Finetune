@@ -4,9 +4,9 @@ This repository contains a script for training the [Phi3-Vision model](https://h
 
 ## Update
 
+- [2024/08/28] Saving non_lora_weights in checkpoint.
 - [2024/08/22] 🔥Now supports Phi3.5-Vision.
 - [2024/07/26] 🔥Supports training vision_model with lora.
-- [2024/07/16] Adding flash-attn to vision_model following the official implementation from phi3-vision repo.
 - [2024/07/16] 🔥Feature update for setting different lr in projector and vision_model.
 - [2024/07/03] Added WebUI demo.
 - [2024/06/27] 🔥Supports multi-image training and inference.
@@ -128,7 +128,7 @@ If you want to train both the language model and the vision model with LoRA:
 bash scripts/finetune_lora_vision.sh
 ```
 
-**Note:** If you want to tune the `embed_token` with LoRA, You need to tune `lm_head` together.
+**IMPORTANT:** If you want to tune the `embed_token` with LoRA, You need to tune `lm_head` together.
 
 <details>
 <summary>Training arguments</summary>
@@ -162,7 +162,6 @@ bash scripts/finetune_lora_vision.sh
 - `--dataloader_num_workers` (int): Number of data loader workers (default: 4).
 
 **Note:** The learning rate of `vision_model` should be 10x ~ 5x smaller than the `language_model`.
-**IMPORTANT** If you want to set different lr for besides language model, You should set `vision_lr` and `projector_lr` together. It won't work if either one is missing.
 
 </details>
 
@@ -222,7 +221,7 @@ You can launch gradio based demo with this command. This can also set some other
 - [x] Supporting multi-image training and inference.
 - [x] Demo with WebUI
 - [x] Support Phi3.5-vision
-- [ ] Supprot for video data
+- [ ] Support for video data
 
 ## Known Issues
 
