@@ -8,6 +8,7 @@ This repository contains a script for training the [Phi3-Vision model](https://h
 
 ## Update
 
+- [2024/09/11] 🔥Supports video training.
 - [2024/08/28] Saving non_lora_weights in checkpoint.
 - [2024/08/22] 🔥Now supports Phi3.5-Vision.
 - [2024/07/26] 🔥Supports training vision_model with lora.
@@ -38,6 +39,7 @@ This repository contains a script for training the [Phi3-Vision model](https://h
 - Enable finetuning `img_projector` and `vision_model` while using LoRA.
 - Disable/enable Flash Attention 2
 - Multi-image training and inference
+- Video-data training
 - Selecting Phi3-vision and Phi3.5-Vision
 
 ## Installation
@@ -66,9 +68,10 @@ pip install flash-attn --no-build-isolation
 The script requires a dataset formatted according to the LLaVA specification. The dataset should be a JSON file where each entry contains information about conversations and images. Ensure that the image paths in the dataset match the provided `--image_folder`.<br>
 
 **When using a multi-image dataset, the image tokens should all be `<image>`, and the image file names should have been in a list.**
+**Please see the example below and follow format your data.**
 
 <details>
-<summary>Example Dataset</summary>
+<summary>Example for single image dataset</summary>
 
 ```json
 [
@@ -105,6 +108,58 @@ The script requires a dataset formatted according to the LLaVA specification. Th
   ...
 ]
 ```
+
+</details>
+
+<details>
+<summary>Example for multi image dataset</summary>
+
+```json
+[
+  {
+    "id": "000000033471",
+    "image": ["000000033471.jpg", "000000033472.jpg"],
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<image>\n<image>\nIs the perspective of the camera differnt?"
+      },
+      {
+        "from": "gpt",
+        "value": "Yes, It the perspective of the camera is different."
+      }
+    ]
+  }
+  ...
+]
+```
+
+</details>
+
+<details>
+<summary>Example for video dataset</summary>
+
+```json
+[
+  {
+    "id": "sample1",
+    "video": "sample1.mp4",
+    "conversations": [
+      {
+        "from": "human",
+        "value": "<video>\nWhat is going on in this video?"
+      },
+      {
+        "from": "gpt",
+        "value": "A man is walking down the road."
+      }
+    ]
+  }
+  ...
+]
+```
+
+**Note:** Phi3-Vision uses a video as a sequential of images.
 
 </details>
 
@@ -155,6 +210,7 @@ bash scripts/finetune_lora_vision.sh
 - `--lora_namespan_exclude` (str): Exclude modules with namespans to add LoRA.
 - `--max_seq_length` (int): Maximum sequence length (default: 128K).
 - `--num_crops` (int): Maximum crop for large size images (default: 16)
+- `--max_num_frames` (int): Maxmimum frames for video dataset (default: 10)
 - `--bits` (int): Quantization bits (default: 16).
 - `--disable_flash_attn2` (bool): Disable Flash Attention 2.
 - `--report_to` (str): Reporting tool (choices: 'tensorboard', 'wandb', 'none') (default: 'tensorboard').
@@ -168,6 +224,16 @@ bash scripts/finetune_lora_vision.sh
 **Note:** The learning rate of `vision_model` should be 10x ~ 5x smaller than the `language_model`.
 
 </details>
+
+### Train with video dataset
+
+You can train the model using a video dataset. However, Phi3-Vision processes videos as a sequence of images, so you’ll need to select specific frames and treat them as multiple images for training. You can set LoRA configs and use for LoRA too.
+
+```bash
+bash scripts/finetune_video.sh
+```
+
+**Note:** When training with multiple images, setting `num_crops` to 4 typically yields better performance than 16. Additionally, you should adjust `max_num_frames` based on the available VRAM.
 
 If you run out of vram, you can use [zero3_offload](./scripts/zero3_offload.json) instead of [zero3](./scripts/zero3_offload.json). However, using zero3 is preferred.
 
@@ -225,7 +291,7 @@ You can launch gradio based demo with this command. This can also set some other
 - [x] Supporting multi-image training and inference.
 - [x] Demo with WebUI
 - [x] Support Phi3.5-vision
-- [ ] Support for video data
+- [x] Support for video data
 
 ## Known Issues
 

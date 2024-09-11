@@ -1,21 +1,36 @@
 import copy
 import os
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Sequence
+from typing import Dict
 
 import torch
 import transformers
 import ujson as json
 from PIL import Image
 from torch.utils.data import Dataset
-# If you get rid of AutoProcessor, the code dosen't work.
-from transformers import AutoProcessor
+from decord import VideoReader, cpu
 
 from .params import DataArguments
 
 IMAGE_TOKEN_INDEX = -200
 IGNORE_INDEX = -100
-LLaVA_IMAGE_TOKEN = "<image>"
+LLAVA_IMAGE_TOKEN = "<image>"
+VIDEO_TOKEN = "<video>"
+
+def encode_video(video_path, max_num_frames=10):
+    def uniform_sample(l, n):
+        gap = len(l) / n
+        idxs = [int(i * gap + gap / 2) for i in range(n)]
+        return [l[i] for i in idxs]
+
+    vr = VideoReader(video_path, ctx=cpu(0))
+    sample_fps = round(vr.get_avg_fps() / 1)  # FPS
+    frame_idx = [i for i in range(0, len(vr), sample_fps)]
+    if len(frame_idx) > max_num_frames:
+        frame_idx = uniform_sample(frame_idx, max_num_frames)
+    frames = vr.get_batch(frame_idx).asnumpy()
+    frames = [Image.fromarray(v.astype('uint8')) for v in frames]
+    return frames
 
 def pad_sequence(sequences, padding_side='right', padding_value=0):
     """
@@ -57,12 +72,16 @@ class LazySupervisedDataset(Dataset):
         self.list_data_dict = list_data_dict
         self.data_args = data_args
         self.padding = padding
+        self.max_num_frames = data_args.max_num_frames
 
     def __len__(self):
         return len(self.list_data_dict)
 
     def __getitem__(self, i) -> Dict[str, torch.Tensor]:
         sources = self.list_data_dict[i]
+
+        is_video = False
+        num_frames = None
 
         processor = self.processor
         if "image" in sources:
@@ -79,10 +98,22 @@ class LazySupervisedDataset(Dataset):
                     image_file = os.path.join(image_folder, image_file)
                 images.append(Image.open(image_file).convert("RGB"))
 
+        elif "video" in sources:
+            video_file = sources["video"]
+            video_folder = self.data_args.image_folder
+
+            if not os.path.exists(video_file):
+                video_file = os.path.join(video_folder, video_file)
+
+            images = encode_video(video_file, self.max_num_frames)
+            
+            is_video = True
+            num_frames = len(images)
+
         else:
             images = None
 
-        sources = copy.deepcopy(llava_to_openai(sources['conversations']))
+        sources = copy.deepcopy(llava_to_openai(sources['conversations'], is_video=is_video, num_frames=num_frames))
 
         all_input_ids = [torch.tensor([1])] # bos token id
         all_labels = [torch.tensor([-100])] # ignore bos token
@@ -180,21 +211,33 @@ class DataCollatorForSupervisedDataset(object):
 def replace_image_tokens(input_string, start_count=1):
     count = start_count
 
-    if LLaVA_IMAGE_TOKEN not in input_string:
+    if LLAVA_IMAGE_TOKEN not in input_string:
         return input_string, count
 
-    while LLaVA_IMAGE_TOKEN in input_string:
-        input_string = input_string.replace(LLaVA_IMAGE_TOKEN, f"<|image_{count}|>", 1)
+    while LLAVA_IMAGE_TOKEN in input_string:
+        input_string = input_string.replace(LLAVA_IMAGE_TOKEN, f"<|image_{count}|>", 1)
         count += 1
 
     return input_string, count
 
-def llava_to_openai(conversations):
+def video_to_image_tokens(input_string, num_frames):
+
+    frame_tokens = "\n".join([LLAVA_IMAGE_TOKEN] * num_frames)
+    input_string = input_string.replace(VIDEO_TOKEN, frame_tokens)
+
+    return input_string
+
+def llava_to_openai(conversations, is_video=False, num_frames=None):
+
     role_mapping = {"human": "user", "gpt": "assistant"}
 
     transformed_data = []
     image_count = 1  # Initialize image count here
     for conversation in conversations:
+        
+        if is_video:
+            conversation['value'] = video_to_image_tokens(conversation["value"], num_frames)
+        
         transformed_content, image_count = replace_image_tokens(conversation["value"], image_count)
         transformed_entry = {
             "role": role_mapping.get(conversation["from"], conversation["from"]),

@@ -64,4 +64,5 @@ class DataArguments:
     )
     lazy_preprocess: bool = False
     image_folder: Optional[str] = field(default=None)
+    max_num_frames: int = 10
 

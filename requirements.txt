@@ -128,3 +128,4 @@ wheel==0.41.2
 xformers==0.0.24
 xxhash==3.4.1
 yarl==1.9.4
+decord==0.6.0
