@@ -41,8 +41,7 @@ def load_pretrained_model(model_path, model_base, model_name, load_8bit=False, l
         lora_cfg_pretrained = AutoConfig.from_pretrained(model_path, trust_remote_code=True)
         if hasattr(lora_cfg_pretrained, 'quantization_config'):
             del lora_cfg_pretrained.quantization_config
-
-        processor = AutoProcessor.from_pretrained(model_base, trust_remote_code=True)
+        processor = AutoProcessor.from_pretrained(model_base, turst_remote_code=True)
         print('Loading Phi3-Vision from base model...')
         model = AutoModelForCausalLM.from_pretrained(model_base, low_cpu_mem_usage=True, config=lora_cfg_pretrained, trust_remote_code=True, **kwargs)
         token_num, tokem_dim = model.lm_head.out_features, model.lm_head.in_features
