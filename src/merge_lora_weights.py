@@ -1,5 +1,5 @@
 import argparse
-from utils import get_model_name_from_path, load_pretrained_model
+from utils import get_model_name_from_path, load_pretrained_model, modify_config_file
 
 def merge_lora(args):
     model_name = get_model_name_from_path(args.model_path)
@@ -13,10 +13,11 @@ def merge_lora(args):
         model.save_pretrained(args.save_model_path, state_dict=state_dict, safe_serialization=True)
         processor.save_pretrained(args.save_model_path)
 
-
     else:
-        model.save_pretrained(args.save_model_path, safe_serialization=True)
+        model.save_pretrained(args.save_model_path, safe_serialization=False)
         processor.save_pretrained(args.save_model_path)
+
+    modify_config_file(args.save_model_path)
 
 
 if __name__ == "__main__":

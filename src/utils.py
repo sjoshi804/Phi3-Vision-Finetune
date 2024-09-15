@@ -1,9 +1,9 @@
-# from src.phi3_vision import Phi3VForCausalLM, Phi3VConfig, Phi3VProcessor
 from peft import PeftModel
 import torch
 from transformers import BitsAndBytesConfig, AutoModelForCausalLM, AutoProcessor, AutoConfig
 import warnings
 import os
+import json
 
 def disable_torch_init():
     """
@@ -38,12 +38,13 @@ def load_pretrained_model(model_path, model_base, model_name, load_8bit=False, l
     if 'lora' in model_name.lower() and model_base is None:
         warnings.warn('There is `lora` in model name but no `model_base` is provided. If you are loading a LoRA model, please provide the `model_base` argument.')
     if 'lora' in model_name.lower() and model_base is not None:
-        lora_cfg_pretrained = AutoConfig.from_pretrained(model_path)
+        lora_cfg_pretrained = AutoConfig.from_pretrained(model_path, trust_remote_code=True)
         if hasattr(lora_cfg_pretrained, 'quantization_config'):
             del lora_cfg_pretrained.quantization_config
-        processor = AutoProcessor.from_pretrained(model_base)
+
+        processor = AutoProcessor.from_pretrained(model_base, trust_remote_code=True)
         print('Loading Phi3-Vision from base model...')
-        model = AutoModelForCausalLM.from_pretrained(model_base, low_cpu_mem_usage=True, config=lora_cfg_pretrained, **kwargs)
+        model = AutoModelForCausalLM.from_pretrained(model_base, low_cpu_mem_usage=True, config=lora_cfg_pretrained, trust_remote_code=True, **kwargs)
         token_num, tokem_dim = model.lm_head.out_features, model.lm_head.in_features
         if model.lm_head.weight.shape[0] != token_num:
             model.lm_head.weight = torch.nn.Parameter(torch.empty(token_num, tokem_dim, device=model.device, dtype=model.dtype))
@@ -60,13 +61,14 @@ def load_pretrained_model(model_path, model_base, model_name, load_8bit=False, l
         model = PeftModel.from_pretrained(model, model_path)
 
         print('Merging LoRA weights...')
+        
         model = model.merge_and_unload()
-
+        
         print('Model Loaded!!!')
-
+    
     else:
-        processor = AutoProcessor.from_pretrained(model_path)
-        model = AutoModelForCausalLM.from_pretrained(model_path, low_cpu_mem_usage=True, **kwargs)
+        processor = AutoProcessor.from_pretrained(model_path, trust_remote_code=True)
+        model = AutoModelForCausalLM.from_pretrained(model_path, low_cpu_mem_usage=True, trust_remote_code=True, **kwargs)
 
     return processor, model
 
@@ -78,3 +80,16 @@ def get_model_name_from_path(model_path):
         return model_paths[-2] + "_" + model_paths[-1]
     else:
         return model_paths[-1]
+    
+
+def modify_config_file(save_path):
+
+    config_file = os.path.join(save_path, "config.json")
+    
+    with open(config_file, "r") as f:
+        config = json.load(f)
+    
+    config['auto_map']['AutoConfig'] = "microsoft/Phi-3.5-vision-instruct--configuration_phi3_v.Phi3VConfig"
+
+    with open(config_file, "w") as f:
+        json.dump(config, f, indent=2)
