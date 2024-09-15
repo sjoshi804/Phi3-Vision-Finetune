@@ -1,4 +1,3 @@
-# from src.phi3_vision import Phi3VForCausalLM, Phi3VConfig, Phi3VProcessor
 from peft import PeftModel
 import torch
 from transformers import BitsAndBytesConfig, AutoModelForCausalLM, AutoProcessor, AutoConfig
@@ -41,9 +40,9 @@ def load_pretrained_model(model_path, model_base, model_name, load_8bit=False, l
         lora_cfg_pretrained = AutoConfig.from_pretrained(model_path)
         if hasattr(lora_cfg_pretrained, 'quantization_config'):
             del lora_cfg_pretrained.quantization_config
-        processor = AutoProcessor.from_pretrained(model_base)
+        processor = AutoProcessor.from_pretrained(model_base, trust_remote_code=True)
         print('Loading Phi3-Vision from base model...')
-        model = AutoModelForCausalLM.from_pretrained(model_base, low_cpu_mem_usage=True, config=lora_cfg_pretrained, **kwargs)
+        model = AutoModelForCausalLM.from_pretrained(model_base, low_cpu_mem_usage=True, config=lora_cfg_pretrained, trust_remote_code=True, **kwargs)
         token_num, tokem_dim = model.lm_head.out_features, model.lm_head.in_features
         if model.lm_head.weight.shape[0] != token_num:
             model.lm_head.weight = torch.nn.Parameter(torch.empty(token_num, tokem_dim, device=model.device, dtype=model.dtype))
@@ -65,8 +64,8 @@ def load_pretrained_model(model_path, model_base, model_name, load_8bit=False, l
         print('Model Loaded!!!')
 
     else:
-        processor = AutoProcessor.from_pretrained(model_path)
-        model = AutoModelForCausalLM.from_pretrained(model_path, low_cpu_mem_usage=True, **kwargs)
+        processor = AutoProcessor.from_pretrained(model_path, trust_remote_code=True)
+        model = AutoModelForCausalLM.from_pretrained(model_path, low_cpu_mem_usage=True, trust_remote_code=True, **kwargs)
 
     return processor, model
 
