@@ -60,8 +60,11 @@ def configure_vision_tower(model, training_args, compute_dtype, device):
         model.vision_embed_tokens.img_processor.to(dtype=compute_dtype, device=device)
 
 def configure_llm(model, training_args):
-    llm_params = model.lm_head.parameters()
-    set_requires_grad(llm_params, not training_args.freeze_llm)
+    lm_head_params = model.lm_head.parameters()
+    set_requires_grad(lm_head_params, not training_args.freeze_llm)
+
+    embed_token_params = model.embed_tokens.parameters()
+    set_requires_grad(embed_token_params, not training_args.freeze_llm)
 
     for name, param in model.named_parameters():
         if name.startswith('layers') or name.startswith('norm'):
