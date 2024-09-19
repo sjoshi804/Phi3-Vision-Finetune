@@ -59,6 +59,14 @@ def configure_vision_tower(model, training_args, compute_dtype, device):
     if training_args.bits in [4, 8]:
         model.vision_embed_tokens.img_processor.to(dtype=compute_dtype, device=device)
 
+def configure_llm(model, training_args):
+    llm_params = model.lm_head.parameters()
+    set_requires_grad(llm_params, not training_args.freeze_llm)
+
+    for name, param in model.named_parameters():
+        if name.startswith('layers') or name.startswith('norm'):
+            param.requires_grad = False
+
 def train():
     global local_rank
 
@@ -159,14 +167,17 @@ def train():
     model.config.tokenizer_padding_side = processor.tokenizer.padding_side
     
     # When using LoRA, the model is rapped once more.
+    if training_args.lora_enable:
+        model_to_configure = model.model.model
+    else:
+        model_to_configure = model.model
+    
     if not training_args.vision_lora:
-        if training_args.lora_enable:
-            model_to_configure = model.model.model
-        else:
-            model_to_configure = model.model
-
         configure_vision_tower(model_to_configure, training_args, compute_dtype, training_args.device)
 
+    if training_args.freeze_llm:
+        configure_llm(model_to_configure, training_args)
+        
     model.config.vision_lr = training_args.vision_lr
     model.config.projector_lr = training_args.projector_lr
 
