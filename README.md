@@ -187,7 +187,8 @@ If you want to train both the language model and the vision model with LoRA:
 bash scripts/finetune_lora_vision.sh
 ```
 
-**IMPORTANT:** If you want to tune the `embed_token` with LoRA, You need to tune `lm_head` together.
+**IMPORTANT:** If you want to tune the `embed_token` with LoRA, You need to tune `lm_head` together.<br>
+**Note:** Freezing LLM would only work without LoRA (including vision_model LoRA).
 
 <details>
 <summary>Training arguments</summary>
@@ -201,6 +202,7 @@ bash scripts/finetune_lora_vision.sh
 - `--per_device_train_batch_size` (int): Training batch size per GPU per forwarding step.
 - `--gradient_accumulation_steps` (int): Gradient accumulation steps (default: 4).
 - `--freeze_vision_tower` (bool): Option to freeze vision_model (default: False).
+- `--freeze_llm` (bool): Option to freeze LLM (default: False).
 - `--tune_img_projector` (bool): Option to finetune img_projector (default: True).
 - `--num_lora_modules` (int): Number of target modules to add LoRA (-1 means all layers).
 - `--vision_lr` (float): Learning rate for `vision_tower` and spatial merging layer.
@@ -221,7 +223,7 @@ bash scripts/finetune_lora_vision.sh
 - `--logging_steps` (int): Logging steps (default: 1).
 - `--dataloader_num_workers` (int): Number of data loader workers (default: 4).
 
-**Note:** The learning rate of `vision_model` should be 10x ~ 5x smaller than the `language_model`.
+**Note:** The learning rate of `vision_model` should be 10x ~ 5x smaller than the `language_model`. <br>
 
 </details>
 
