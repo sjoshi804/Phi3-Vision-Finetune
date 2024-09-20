@@ -165,6 +165,8 @@ The script requires a dataset formatted according to the LLaVA specification. Th
 
 ## Training
 
+**Note:** Freezing LLM would only work without LoRA (including vision_model LoRA).
+
 To run the training script, use the following command:
 
 ### Full Finetuning
@@ -187,8 +189,7 @@ If you want to train both the language model and the vision model with LoRA:
 bash scripts/finetune_lora_vision.sh
 ```
 
-**IMPORTANT:** If you want to tune the `embed_token` with LoRA, You need to tune `lm_head` together.<br>
-**Note:** Freezing LLM would only work without LoRA (including vision_model LoRA).
+**IMPORTANT:** If you want to tune the `embed_token` with LoRA, You need to tune `lm_head` together.
 
 <details>
 <summary>Training arguments</summary>

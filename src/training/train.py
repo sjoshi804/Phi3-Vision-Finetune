@@ -3,11 +3,7 @@ import torch
 import transformers
 from peft import LoraConfig, get_peft_model
 import ast
-# If you get rid of AutoProcessor, the code dosen't work.
 from transformers import AutoProcessor, BitsAndBytesConfig
-import sys
-
-# from phi3_vision import Phi3VForCausalLM, Phi3VConfig, Phi3VProcessor
 from transformers import AutoProcessor, AutoModelForCausalLM
 from training.trainer import Phi3VTrainer
 from training.data import make_supervised_data_module
@@ -53,7 +49,7 @@ def configure_vision_tower(model, training_args, compute_dtype, device):
     img_projection_params = model.vision_embed_tokens.img_projection.parameters()
     set_requires_grad(img_projection_params, training_args.tune_img_projector)
 
-    vision_model_params = model.vision_embed_tokens.img_processor.vision_model.parameters()
+    vision_model_params = vision_tower.parameters()
     set_requires_grad(vision_model_params, not training_args.freeze_vision_tower)
 
     if training_args.bits in [4, 8]:
@@ -63,12 +59,12 @@ def configure_llm(model, training_args):
     lm_head_params = model.lm_head.parameters()
     set_requires_grad(lm_head_params, not training_args.freeze_llm)
 
-    embed_token_params = model.embed_tokens.parameters()
+    embed_token_params = model.model.embed_tokens.parameters()
     set_requires_grad(embed_token_params, not training_args.freeze_llm)
 
-    for name, param in model.named_parameters():
+    for name, param in model.model.named_parameters():
         if name.startswith('layers') or name.startswith('norm'):
-            param.requires_grad = False
+            param.requires_grad = not training_args.freeze_llm
 
 def train():
     global local_rank
@@ -79,6 +75,7 @@ def train():
     model_args, data_args, training_args = parser.parse_args_into_dataclasses()
 
     assert training_args.num_crops <= 16, 'num_crops must be less than or equal to 16'
+    assert not (training_args.lora_enable and training_args.freeze_llm), 'When using LoRA, the LLM should not be frozen. If you want to freeze the LLM, please disable LoRA.'
 
     if not training_args.lora_enable:
         assert not training_args.vision_lora, \
@@ -103,7 +100,7 @@ def train():
             quantization_config = BitsAndBytesConfig(
                 load_in_4bit=training_args.bits==4,
                 load_in_8bit=training_args.bits==8,
-                llm_int8_skip_modules=["img_projection"],
+                llm_int8_skip_modules=["img_projection", "vision_model"],
                 llm_int8_threshold=6.0,
                 llm_int8_has_fp16_weight=False,
                 bnb_4bit_compute_dtype=compute_dtype,
@@ -121,8 +118,6 @@ def train():
         _attn_implementation="flash_attention_2" if not training_args.disable_flash_attn2 else "eager", 
         **bnb_model_from_pretrained_args
     )
-
-    # rank0_print(model)
 
     model.config.use_cache = False
 
@@ -174,12 +169,10 @@ def train():
         model_to_configure = model.model.model
     else:
         model_to_configure = model.model
+        configure_llm(model, training_args)
     
     if not training_args.vision_lora:
         configure_vision_tower(model_to_configure, training_args, compute_dtype, training_args.device)
-
-    if training_args.freeze_llm:
-        configure_llm(model_to_configure, training_args)
         
     model.config.vision_lr = training_args.vision_lr
     model.config.projector_lr = training_args.projector_lr
