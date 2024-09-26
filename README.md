@@ -4,7 +4,7 @@ This repository contains a script for training the [Phi3-Vision model](https://h
 
 ## Other projects
 
-**[[Qwen2-VL Finetuning]](https://github.com/2U1/Qwen2-VL-Finetune)**
+**[[Qwen2-VL Finetuning]](https://github.com/2U1/Qwen2-VL-Finetune)**<br>
 **[[Llama3.2-Vision Finetuning]](https://github.com/2U1/Llama3.2-Vision-Ft)**
 
 ## Update
@@ -20,17 +20,29 @@ This repository contains a script for training the [Phi3-Vision model](https://h
 
 ## Table of Contents
 
-- [Installation](#installation)
-  - [Using `requirements.txt`](#using-requirementstxt)
-  - [Using `environment.yaml`](#using-environmentyaml)
-- [Dataset Preparation](#dataset-preparation)
-- [Training](#training)
-  - [Full Finetuning](#full-finetuning)
-  - [Finetune with LoRA](#finetune-with-lora)
-    - [Merge LoRA Weights](#merge-lora-weights)
-- [Inference](#inference)
-  - [CLI Inference](#cli-inference)
-  - [WebUI Demo](#gradio-infernce-webui)
+- [Fine-tuning Phi3-Vision Series](#fine-tuning-phi3-vision-series)
+  - [Other projects](#other-projects)
+  - [Update](#update)
+  - [Table of Contents](#table-of-contents)
+  - [Supported Features](#supported-features)
+  - [Installation](#installation)
+    - [Using `requirements.txt`](#using-requirementstxt)
+    - [Using `environment.yaml`](#using-environmentyaml)
+  - [Dataset Preparation](#dataset-preparation)
+  - [Training](#training)
+    - [Full Finetuning](#full-finetuning)
+    - [Finetune with LoRA](#finetune-with-lora)
+    - [Train with video dataset](#train-with-video-dataset)
+      - [Merge LoRA Weights](#merge-lora-weights)
+      - [Issue for libcudnn error](#issue-for-libcudnn-error)
+  - [Inference](#inference)
+    - [CLI Inference](#cli-inference)
+    - [Gradio Infernce (WebUI)](#gradio-infernce-webui)
+  - [TODO](#todo)
+  - [Known Issues](#known-issues)
+  - [License](#license)
+  - [Citation](#citation)
+  - [Acknowledgement](#acknowledgement)
 
 ## Supported Features
 

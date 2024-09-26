@@ -124,9 +124,9 @@ class LazySupervisedDataset(Dataset):
             user_input = sources[j]
             gpt_response = sources[j + 1]
 
-            user_input = processor.tokenizer.apply_chat_template([user_input], tokenize=False)
-            gpt_response = processor.tokenizer.apply_chat_template([gpt_response], tokenize=False)
-
+            user_input = processor.tokenizer.apply_chat_template([user_input], tokenize=False, add_generation_prompt=True)
+            gpt_response = f"{gpt_response}<|end|>\n"
+            
             if idx == 0:
                 inputs = processor(user_input, images, return_tensors='pt')
                 prompt_input_ids = inputs['input_ids']
