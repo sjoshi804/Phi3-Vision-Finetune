@@ -1,7 +1,7 @@
 from transformers import TextStreamer
 from PIL import Image
 import torch
-from transformers import AutoModelForCausalLM, AutoProcessor, StoppingCriteria
+from transformers import StoppingCriteria
 import requests
 from io import BytesIO
 import argparse

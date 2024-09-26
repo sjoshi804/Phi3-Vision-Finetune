@@ -171,7 +171,6 @@ class LazySupervisedDataset(Dataset):
         
         return data_dict
 
-@dataclass
 class DataCollatorForSupervisedDataset(object):
     """Collate examples for supervised fine-tuning."""
 

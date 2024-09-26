@@ -3,8 +3,7 @@ import torch
 import transformers
 from peft import LoraConfig, get_peft_model
 import ast
-from transformers import AutoProcessor, BitsAndBytesConfig
-from transformers import AutoProcessor, AutoModelForCausalLM
+from transformers import AutoProcessor, BitsAndBytesConfig, AutoModelForCausalLM
 from training.trainer import Phi3VTrainer
 from training.data import make_supervised_data_module
 from training.params import DataArguments, ModelArguments, TrainingArguments

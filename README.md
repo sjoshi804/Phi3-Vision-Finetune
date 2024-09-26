@@ -1,10 +1,11 @@
-# Fine-tuning Phi3.x-Vision Series
+# Fine-tuning Phi3-Vision Series
 
 This repository contains a script for training the [Phi3-Vision model](https://huggingface.co/microsoft/Phi-3-vision-128k-instruct) and [Phi3.5-Vision model](https://huggingface.co/microsoft/Phi-3.5-vision-instruct)
 
 ## Other projects
 
 **[[Qwen2-VL Finetuning]](https://github.com/2U1/Qwen2-VL-Finetune)**
+**[[Llama3.2-Vision Finetuning]](https://github.com/2U1/Llama3.2-Vision-Ft)**
 
 ## Update
 
