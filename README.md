@@ -5,7 +5,8 @@ This repository contains a script for training the [Phi3-Vision model](https://h
 ## Other projects
 
 **[[Qwen2-VL Finetuning]](https://github.com/2U1/Qwen2-VL-Finetune)**<br>
-**[[Llama3.2-Vision Finetuning]](https://github.com/2U1/Llama3.2-Vision-Ft)**
+**[[Llama3.2-Vision Finetuning]](https://github.com/2U1/Llama3.2-Vision-Ft)**<br>
+**[[Molmo Finetune]](https://github.com/2U1/Molmo-Finetune)**
 
 ## Update
 
