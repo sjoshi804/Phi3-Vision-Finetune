@@ -281,10 +281,11 @@ You could see this [issue](https://github.com/andimarafioti/florence2-finetuning
 ```
 python -m src.serve.cli \
  --model-path /path/to/merged/weight \
- --image-file /Path/to/image
+ --image-file /Path/to/image1, /Path/to/image2, ...
 ```
 
-You can set some other generation configs like `repetition_penalty`, `temperature` etc.
+You can set some other generation configs like `repetition_penalty`, `temperature` etc. <br>
+You can also set video too (The max_frame is set to 10. You can set this by passing argument.).
 
 ### Gradio Infernce (WebUI)
 
@@ -301,7 +302,8 @@ python -m src.serve.app \
     --model-path /path/to/merged/weight
 ```
 
-You can launch gradio based demo with this command. This can also set some other generation configs like `repetition_penalty`, `temperature` etc.
+You can launch gradio based demo with this command. This can also set some other generation configs like `repetition_penalty`, `temperature` etc.<br>
+You can also set the max_frame for sampling the frames in the video. Default is set to 10.
 
 ## TODO
 

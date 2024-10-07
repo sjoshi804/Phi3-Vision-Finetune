@@ -1,41 +1,33 @@
 from transformers import TextStreamer
 from PIL import Image
 import torch
-from transformers import StoppingCriteria
 import requests
 from io import BytesIO
+from decord import VideoReader, cpu
 import argparse
 import warnings
 from src.utils import load_pretrained_model, get_model_name_from_path, disable_torch_init
 
 warnings.filterwarnings("ignore")
 
-DEFAULT_IMAGE_TOKEN = "<|image_1|>"
+def is_video_file(filename):
+    video_extensions = ['.mp4', '.avi', '.mkv', '.mov', '.wmv', '.flv', '.webm', '.mpeg']
+    return any(filename.lower().endswith(ext) for ext in video_extensions)
 
-class KeywordsStoppingCriteria(StoppingCriteria):
-    def __init__(self, keywords, tokenizer, input_ids):
-        self.keywords = keywords
-        self.keyword_ids = []
-        for keyword in keywords:
-            cur_keyword_ids = tokenizer(keyword).input_ids
-            if len(cur_keyword_ids) > 1 and cur_keyword_ids[0] == tokenizer.bos_token_id:
-                cur_keyword_ids = cur_keyword_ids[1:]
-            self.keyword_ids.append(torch.tensor(cur_keyword_ids))
-        self.tokenizer = tokenizer
-        self.start_len = input_ids.shape[1]
+def encode_video(video_path, max_num_frames=10):
+    def uniform_sample(l, n):
+        gap = len(l) / n
+        idxs = [int(i * gap + gap / 2) for i in range(n)]
+        return [l[i] for i in idxs]
 
-    def __call__(self, output_ids: torch.LongTensor, scores: torch.FloatTensor, **kwargs) -> bool:
-        assert output_ids.shape[0] == 1, "Only support batch size 1 (yet)"  # TODO
-        offset = min(output_ids.shape[1] - self.start_len, 3)
-        self.keyword_ids = [keyword_id.to(output_ids.device) for keyword_id in self.keyword_ids]
-        for keyword_id in self.keyword_ids:
-            if output_ids[0, -keyword_id.shape[0]:] == keyword_id:
-                return True
-        outputs = self.tokenizer.batch_decode(output_ids[:, -offset:], skip_special_tokens=True)[0]
-        for keyword in self.keywords:
-            if keyword in outputs:
-                return True
-        return False
+    vr = VideoReader(video_path, ctx=cpu(0))
+    sample_fps = round(vr.get_avg_fps() / 1)  # FPS
+    frame_idx = [i for i in range(0, len(vr), sample_fps)]
+    if len(frame_idx) > max_num_frames:
+        frame_idx = uniform_sample(frame_idx, max_num_frames)
+    frames = vr.get_batch(frame_idx).asnumpy()
+    frames = [Image.fromarray(v.astype('uint8')) for v in frames]
+    return frames
 
 def load_image(image_file):
     if image_file.startswith('http://') or image_file.startswith('https://'):
@@ -63,11 +55,18 @@ def main(args):
                                              device=args.device, use_flash_attn=use_flash_attn
     )
 
-    messages = [
-    # {"role": "system", "content": "You are an AI assistant monitoring traffic situations through surveillance systems to support drivers in emergency situations."},
-    ]
+    messages = []
 
-    image = load_image(args.image_file)
+    image_list = []
+    if is_video_file(args.image_file):
+        image_list = encode_video(args.image_file, max_frames=args.max_frames)
+    else:
+        if ',' in args.image_file:
+            image_files = args.image_file.split(',')
+            for img_file in image_files:
+                image_list.append(load_image(img_file.strip()))
+        else:
+            image_list.append(load_image(args.image_file))
 
     generation_args = {
         "max_new_tokens": args.max_new_tokens,
@@ -75,6 +74,8 @@ def main(args):
         "do_sample": True if args.temperature > 0 else False,
         "repetition_penalty": args.repetition_penalty,
     }
+    
+    placeholder = ""
 
     while True:
         try:
@@ -87,19 +88,18 @@ def main(args):
 
         print(f"Assistant: ", end="")
 
-        if image is not None and len(messages) < 2:
+        if image_list is not None and len(messages) < 2:
             # only putting the image token in the first turn of user.
-            # You could just uncomment the system messages or use it.
-            inp = DEFAULT_IMAGE_TOKEN + '\n' + inp
+            for i in range(len(image_list)):
+                placeholder += f"<|image_{i}|>\n"
+            
+            inp = placeholder + inp
 
         messages.append({"role": "user", "content": inp})
 
         prompt = processor.tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
-        inputs = processor(prompt, image, return_tensors="pt").to(args.device)
+        inputs = processor(prompt, image_list, return_tensors="pt").to(args.device)
         
-        stop_str = "<|end|>"
-        keywords = [stop_str]
-        stopping_criteria = KeywordsStoppingCriteria(keywords, processor.tokenizer, inputs["input_ids"])
         streamer = TextStreamer(processor.tokenizer, skip_prompt=True, skip_special_tokens=True)
 
         with torch.inference_mode():
@@ -108,9 +108,7 @@ def main(args):
                 streamer=streamer,
                 **generation_args,
                 use_cache=True,
-                eos_token_id=processor.tokenizer.eos_token_id,
-                pad_token_id=processor.tokenizer.eos_token_id,
-                stopping_criteria=[stopping_criteria]
+                eos_token_id=processor.tokenizer.eos_token_id
             )
         generate_ids = generate_ids[:, inputs['input_ids'].shape[1]:]
         outputs = processor.batch_decode(generate_ids, skip_special_tokens=True, clean_up_tokenization_spaces=False)[0]
@@ -125,6 +123,7 @@ if __name__ == "__main__":
     parser.add_argument("--model-path", type=str, default=None)
     parser.add_argument("--model-base", type=str, default="microsoft/Phi-3-vision-128k-instruct")
     parser.add_argument("--image-file", type=str, required=True)
+    parser.add_argument("--max-frames", type=int, default=10)
     parser.add_argument("--device", type=str, default="cuda")
     parser.add_argument("--load-8bit", action="store_true")
     parser.add_argument("--load-4bit", action="store_true")
