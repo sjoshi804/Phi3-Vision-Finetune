@@ -130,8 +130,8 @@ class LazySupervisedDataset(Dataset):
             if idx == 0:
                 inputs = processor(user_input, images, return_tensors='pt')
                 prompt_input_ids = inputs['input_ids']
-                all_pixel_values.append(inputs['pixel_values'])
-                all_image_sizes.append(inputs['image_sizes'])
+                all_pixel_values.append(inputs.get('pixel_values'))
+                all_image_sizes.append(inputs.get('image_sizes'))
 
             else:
                 prompt_input_ids = processor.tokenizer(user_input, add_special_tokens=False, return_tensors='pt')['input_ids']
@@ -156,8 +156,8 @@ class LazySupervisedDataset(Dataset):
         input_ids = torch.cat(all_input_ids, dim=0).to(torch.long)
         labels = torch.cat(all_labels, dim=0).to(torch.long)
 
-        pixel_values = torch.cat(all_pixel_values, dim=0)
-        image_sizes = torch.cat(all_image_sizes, dim=0)
+        pixel_values = torch.cat([pv for pv in all_pixel_values if pv is not None], dim=0) if any(all_pixel_values) else None
+        image_sizes = torch.cat([isize for isize in all_image_sizes if isize is not None], dim=0) if any(all_image_sizes) else None
 
         attention_mask = (input_ids > -1000000).to(torch.long)
 
@@ -186,8 +186,8 @@ class DataCollatorForSupervisedDataset(object):
         for example in examples:
             batch_input_ids.append(example["input_ids"])
             batch_label_ids.append(example["labels"])
-            batch_pixel_values.append(example["pixel_values"])
-            batch_image_sizes.append(example["image_sizes"])
+            batch_pixel_values.append(example.get("pixel_values"))
+            batch_image_sizes.append(example.get("image_sizes"))
         
         input_ids = pad_sequence(
             batch_input_ids, padding_side='right', padding_value=self.pad_token_id
@@ -195,17 +195,20 @@ class DataCollatorForSupervisedDataset(object):
 
         attention_mask = input_ids != self.pad_token_id
         labels = pad_sequence(batch_label_ids, padding_side='right', padding_value=IGNORE_INDEX)
-        pixel_values = torch.cat(batch_pixel_values, dim=0)
-        image_sizes = torch.cat(batch_image_sizes, dim=0)
+        pixel_values = torch.cat([pv for pv in batch_pixel_values if pv is not None], dim=0) if any(batch_pixel_values) else None
+        image_sizes = torch.cat([isize for isize in batch_image_sizes if isize is not None], dim=0) if any(batch_image_sizes) else None
 
-        return {
-            'input_ids': input_ids,
-            'labels': labels,
-            'attention_mask': attention_mask,
-            'pixel_values': pixel_values,
-            'image_sizes': image_sizes,
-        }
-    
+        batch_dict = dict(
+            input_ids=input_ids,
+            labels=labels,
+            attention_mask=attention_mask,
+        )
+
+        if pixel_values is not None:
+            batch_dict.update(pixel_values=pixel_values, image_sizes=image_sizes)
+
+        return batch_dict
+
 
 def replace_image_tokens(input_string, start_count=1):
     count = start_count

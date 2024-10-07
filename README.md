@@ -10,9 +10,10 @@ This repository contains a script for training the [Phi3-Vision model](https://h
 
 ## Update
 
-- [2024/09/11] 🔥Supports video training.
+- [2024/10/07] 🔥Supports text-only data.
+- [2024/09/11] 🔥Supports video data.
 - [2024/08/28] Saving non_lora_weights in checkpoint.
-- [2024/08/22] 🔥Now supports Phi3.5-Vision.
+- [2024/08/22] 🔥Supports Phi3.5-Vision.
 - [2024/07/26] 🔥Supports training vision_model with lora.
 - [2024/07/16] 🔥Feature update for setting different lr in projector and vision_model.
 - [2024/07/03] Added WebUI demo.
