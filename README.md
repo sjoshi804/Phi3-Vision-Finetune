@@ -10,11 +10,10 @@ This repository contains a script for training the [Phi3-Vision model](https://h
 
 ## News
 
-- [2024/10/08] 🎉 **This fine-tuning code is now referenced in the [Microsoft Phi3 Cookbook](https://github.com/microsoft/Phi-3CookBook)**. It serves as a recommended example for fine-tuning Phi-3 and Phi-3.5 Vision models.
+- [2024/10/08] 🎉 **This fine-tuning code for Phi-3 and 3.5 Vision models is now included in the [Microsoft Phi3 Cookbook](https://github.com/microsoft/phi-3cookbook)** as a recommended example in the Fine-Tuning section.
 
 ## Update
 
-- [2024/10/08] Quick Start and Fine-Tuning sections updated with this fine-tuning code link for Phi-3 and Phi-3.5 Vision models.
 - [2024/10/08] Demo code supports video and multi-image input.
 - [2024/10/07] 🔥Supports text-only data.
 - [2024/09/11] 🔥Supports video data.
