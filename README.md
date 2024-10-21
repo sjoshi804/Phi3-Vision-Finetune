@@ -8,8 +8,13 @@ This repository contains a script for training the [Phi3-Vision model](https://h
 **[[Llama3.2-Vision Finetuning]](https://github.com/2U1/Llama3.2-Vision-Ft)**<br>
 **[[Molmo Finetune]](https://github.com/2U1/Molmo-Finetune)**
 
+## News
+
+- [2024/10/08] 🎉 **This fine-tuning code is now referenced in the [Microsoft Phi3 Cookbook](https://github.com/microsoft/Phi-3CookBook)**. It serves as a recommended example for fine-tuning Phi-3 and Phi-3.5 Vision models.
+
 ## Update
 
+- [2024/10/08] Quick Start and Fine-Tuning sections updated with this fine-tuning code link for Phi-3 and Phi-3.5 Vision models.
 - [2024/10/08] Demo code supports video and multi-image input.
 - [2024/10/07] 🔥Supports text-only data.
 - [2024/09/11] 🔥Supports video data.
@@ -313,6 +318,7 @@ You can also set the max_frame for sampling the frames in the video. Default is 
 - [x] Demo with WebUI
 - [x] Support Phi3.5-vision
 - [x] Support for video data
+- [ ] Fast infernece with [fast-gpt](https://pytorch.org/blog/accelerating-generative-ai-2/)
 
 ## Known Issues
 

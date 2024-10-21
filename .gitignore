@@ -170,4 +170,4 @@ logs/*.log
 
 testing.ipynb
 
-convert_gguf
+src/model
