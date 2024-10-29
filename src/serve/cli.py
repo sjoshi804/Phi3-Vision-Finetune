@@ -91,7 +91,7 @@ def main(args):
         if image_list is not None and len(messages) < 2:
             # only putting the image token in the first turn of user.
             for i in range(len(image_list)):
-                placeholder += f"<|image_{i}|>\n"
+                placeholder += f"<|image_{i+1}|>\n"
             
             inp = placeholder + inp
 
