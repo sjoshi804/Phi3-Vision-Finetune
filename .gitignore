@@ -171,3 +171,5 @@ logs/*.log
 testing.ipynb
 
 src/model
+
+generate.py
