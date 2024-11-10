@@ -79,7 +79,7 @@ pip install flash-attn --no-build-isolation
 ```bash
 conda env create -f environment.yaml
 conda activate phi3v
-pip install flash-attn --no-build-isolation
+pip install flash-attn==2.5.8 --no-build-isolation
 ```
 
 **Note:** You should install the `flash-attn` after running other libraries with `requirements.txt` or `environment.yaml`.
