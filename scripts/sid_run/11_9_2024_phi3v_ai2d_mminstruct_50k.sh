@@ -1,10 +1,10 @@
 #!/bin/bash
 export PYTHONPATH=src:$PYTHONPATH
 
-TRAIN_DATA_PATH=$INPUT_DIR/generated_data/spatial_map_mminstruct_middle_ppl_25k.json
-RUN_ID=spatial_map_mminstruct_middle_ppl_25k
+#!/bin/bash
 
-python scripts/process_data.py $TRAIN_DATA_PATH $INPUT_DIR
+TRAIN_DATA_PATH=/home/sjoshi/llava-fork/mminstruct_data/ai2d_gen_task_desc_50k_middle_ppl.json
+RUN_ID=ai2d_gen_task_desc_50k_middle_ppl
 
 CUDA_VISIBLE_DEVICES=0,1,2,3 deepspeed src/training/train.py \
     --deepspeed scripts/zero3.json \
@@ -17,9 +17,9 @@ CUDA_VISIBLE_DEVICES=0,1,2,3 deepspeed src/training/train.py \
     --bf16 True \
     --fp16 False \
     --disable_flash_attn2 False \
-    --output_dir $OUTPUT_DIR/checkpoints/phi3v_$RUN_ID \
+    --output_dir checkpoints/phi3v_$RUN_ID \
     --num_crops 16 \
-    --num_train_epochs 3 \
+    --num_train_epochs 6 \
     --per_device_train_batch_size 16 \
     --gradient_accumulation_steps 1 \
     --learning_rate 2e-5 \
