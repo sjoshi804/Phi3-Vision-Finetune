@@ -1,17 +1,15 @@
 #!/bin/bash
-
-# You can use phi3 instead of phi3.5
-MODEL_NAME="microsoft/Phi-3-vision-128k-instruct"
-TRAIN_DATA_PATH="$INPUT_DIR/generated_data/ai2d_gen_task_desc_50k_middle_ppl.json"
-RUN_ID="ai2d_gen_task_desc_50k_middle_ppl"
 export PYTHONPATH=src:$PYTHONPATH
+
+TRAIN_DATA_PATH=$INPUT_DIR/generated_data/spatial_map_mminstruct_middle_ppl_25k.json
+RUN_ID=spatial_map_mminstruct_middle_ppl_25k
 
 python scripts/process_data.py $TRAIN_DATA_PATH $INPUT_DIR
 
 CUDA_VISIBLE_DEVICES=0,1,2,3 deepspeed src/training/train.py \
     --deepspeed scripts/zero3.json \
     --version $RUN_ID \
-    --model_id $MODEL_NAME \
+    --model_id microsoft/Phi-3-vision-128k-instruct \
     --data_path $TRAIN_DATA_PATH \
     --image_folder /path/to/your/image/folder \
     --tune_img_projector True \
@@ -20,7 +18,7 @@ CUDA_VISIBLE_DEVICES=0,1,2,3 deepspeed src/training/train.py \
     --bf16 True \
     --fp16 False \
     --disable_flash_attn2 False \
-    --output_dir $OUTPUT_DIR/checkpoints/llava_$RUN_ID \
+    --output_dir $OUTPUT_DIR/checkpoints/phi3v_$RUN_ID \
     --num_crops 16 \
     --num_train_epochs 3 \
     --per_device_train_batch_size 16 \
