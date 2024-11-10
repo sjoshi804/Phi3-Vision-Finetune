@@ -62,15 +62,14 @@ class LazySupervisedDataset(Dataset):
         padding=True,
     ):
         super(LazySupervisedDataset, self).__init__()
-        if isinstance(data_path, str):
-            list_data_dict = json.load(open(data_path, "r"))
-        else:
-            list_data_dict = data_path
+        with open(data_path, "r") as f:
+            data = json.load(f)
 
         # rank0_print("Formatting inputs...Skip in lazy mode")
         self.processor = processor
-        self.list_data_dict = list_data_dict
+        self.list_data_dict = data["samples"]
         self.data_args = data_args
+        self.data_args.image_folder = data["image_folder"]
         self.padding = padding
         self.max_num_frames = data_args.max_num_frames
 
@@ -84,8 +83,8 @@ class LazySupervisedDataset(Dataset):
         num_frames = None
 
         processor = self.processor
-        if "image" in sources:
-            image_files = sources["image"]
+        if "image_1" in sources:
+            image_files = sources["image_1"]
             image_folder = self.data_args.image_folder
 
             if isinstance(image_files, str):
