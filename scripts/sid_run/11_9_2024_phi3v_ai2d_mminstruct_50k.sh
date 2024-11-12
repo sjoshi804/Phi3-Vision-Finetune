@@ -11,6 +11,8 @@ CUDA_VISIBLE_DEVICES=0,1,2,3 deepspeed src/training/train.py \
     --model_id microsoft/Phi-3-vision-128k-instruct \
     --data_path $TRAIN_DATA_PATH \
     --image_folder /path/to/your/image/folder \
+    --save_steps 50000 \
+    --save_total_limit 1 \
     --tune_img_projector True \
     --freeze_vision_tower True \
     --freeze_llm False \
@@ -19,7 +21,7 @@ CUDA_VISIBLE_DEVICES=0,1,2,3 deepspeed src/training/train.py \
     --disable_flash_attn2 False \
     --output_dir checkpoints/phi3v_$RUN_ID \
     --num_crops 16 \
-    --num_train_epochs 6 \
+    --num_train_epochs 4 \
     --per_device_train_batch_size 16 \
     --gradient_accumulation_steps 1 \
     --learning_rate 2e-5 \

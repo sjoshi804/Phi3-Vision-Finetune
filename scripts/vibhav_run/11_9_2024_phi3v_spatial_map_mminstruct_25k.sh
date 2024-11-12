@@ -20,6 +20,8 @@ CUDA_VISIBLE_DEVICES=0,1,2,3 deepspeed src/training/train.py \
     --output_dir $OUTPUT_DIR/checkpoints/phi3v_$RUN_ID \
     --num_crops 16 \
     --num_train_epochs 3 \
+    --save_steps 25000 \
+    --save_total_limit 1 \
     --per_device_train_batch_size 16 \
     --gradient_accumulation_steps 1 \
     --learning_rate 2e-5 \
